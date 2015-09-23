@@ -31,7 +31,6 @@ QGLContext * newFavoriteQGLContext() {
 
 widget::widget() : //QGLWidget(newFavoriteQGLContext()),
         twister(std::random_device{}()), dist(0.0, 1.0) {
-    //qDebug() << context()->format().swapBehavior() << ' ' << context()->format().swapInterval();
 
     QObject::connect(&continuousRefresh, &QTimer::timeout, this, static_cast<void (QOpenGLWidget::*)()>(&QOpenGLWidget::update));
     continuousRefresh.start(0);
@@ -46,6 +45,8 @@ widget::~widget() {
 }
 
 void widget::initializeGL() {
+    std::ios_base::sync_with_stdio(false); // turns off sync between C and C++ output streams(to increase output speed)
+
     initializeOpenGLFunctions();
     ogllogger.initialize();
     QObject::connect(&ogllogger, &QOpenGLDebugLogger::messageLogged, [](const QOpenGLDebugMessage & msg){
@@ -59,6 +60,10 @@ void widget::initializeGL() {
     glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_tu);
     std::cout << "MultiTexture: " << iUnits << ' ' << texture_units << ' ' << max_tu << std::endl;
 
+    glEnable(GL_TEXTURE_3D);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(1.0, 1.0, 1.0, 1.0);
+
     const auto dims = boost::extents[supercubeedge][supercubeedge];
     for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         delete texture;
@@ -67,12 +72,6 @@ void widget::initializeGL() {
     for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         texture = nullptr;
     }
-
-    glEnable(GL_TEXTURE_3D);
-    glEnable(GL_DEPTH_TEST);
-    glClearColor(1.0, 1.0, 1.0, 1.0);
-
-    std::ios_base::sync_with_stdio(false);
 
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
@@ -84,29 +83,26 @@ void widget::initializeGL() {
         std::ifstream file(path, std::ios_base::binary);
         data.resize(128*128*128);
         if (file) {
-            //data = std::vector<char>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>{});
             file.read(data.data(), data.size());
-            //std::cout << path << " loaded" << std::endl;
         } else {
             std::fill(std::begin(data), std::end(data), 127);
             std::cout << path << " failed" << std::endl;
         }
-        //std::cout << time.restart() << ' ';
+
         textures[y][x] = new QOpenGLTexture(QOpenGLTexture::Target3D);
         QOpenGLTexture & texture = *textures[y][x];
+
         texture.setAutoMipMapGenerationEnabled(false);
-        //texture.setFormat(QOpenGLTexture::LuminanceFormat);
         texture.setSize(128, 128, 128);
         texture.setMipLevels(1);
         texture.setMinificationFilter(QOpenGLTexture::Linear);
         texture.setMagnificationFilter(QOpenGLTexture::Linear);
-
         texture.setFormat(QOpenGLTexture::R8_UNorm);
         texture.allocateStorage();
         texture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data.data());
     }
 
-    program.addShaderFromSourceCode(QOpenGLShader::Vertex,R"shaderSource(
+    program.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
     //#version 110
     uniform mat4 model_matrix;
     uniform mat4 view_matrix;
@@ -122,7 +118,7 @@ void widget::initializeGL() {
         texCoordFrag = texCoordVertex;
     })shaderSource");
 
-    program.addShaderFromSourceCode(QOpenGLShader::Fragment,R"shaderSource(
+    program.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
     //#version 110
     uniform sampler3D textureCentral;
     uniform sampler3D textureLeft;
@@ -153,7 +149,7 @@ void widget::initializeGL() {
 void widget::mouseMoveEvent(QMouseEvent *event) {
     auto test = mouseDown - event->pos();
     deviation += QVector3D(test.x(), test.y(), 0);
-    deviation = {std::fmod(deviation.x(), 128.f), std::fmod(deviation.y(), 128.f), std::fmod(deviation.z(), 128.f)};
+    deviation = {std::fmod(deviation.x(), 128.0f), std::fmod(deviation.y(), 128.0f), std::fmod(deviation.z(), 128.0f)};
     mouseDown = event->pos();
 }
 
@@ -176,8 +172,8 @@ void widget::paintGL() {
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    const float width = 1.f*this->width();
-    const float height = 1.f*this->height();
+    const float width = 1.0f * this->width();
+    const float height = 1.0f * this->height();
     std::vector<std::array<GLfloat, 3>> triangleVertices;
     std::vector<std::array<GLfloat, 3>> textureVertices;
     for (float y = 0; y < supercubeedge; ++y)
@@ -200,11 +196,11 @@ void widget::paintGL() {
         textureVertices.push_back({{1.0f, 1.0f, endtexR}});
     }
 
-    QMatrix4x4 modelMatrix;//identity
-    QMatrix4x4 viewMatrix;//identity
+    QMatrix4x4 modelMatrix; //identity
+    QMatrix4x4 viewMatrix; //identity
     QMatrix4x4 projectionMatrix;
     projectionMatrix.ortho(0, width, 0, height, -1, 1);
-    viewMatrix.translate(deviation / QVector3D{-1.f, 1.f, 1});
+    viewMatrix.translate(deviation / QVector3D{-1.0f, 1.0f, 1});
 
     int vertexLocation = program.attributeLocation("vertex");
     int texLocation = program.attributeLocation("texCoordVertex");
