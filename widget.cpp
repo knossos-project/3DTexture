@@ -291,7 +291,7 @@ void widget::paintGL() {
 
 void widget::wheelEvent(QWheelEvent * const event) {
     const int direction = std::trunc(event->angleDelta().y());
-    frame += direction;///120;
+    frame += direction / 120;
     frame = std::fmod(frame, 128);
     std::cout << direction << " " << event->angleDelta().y() << " " << frame << std::endl;
     updateGL();
