@@ -144,14 +144,14 @@ void widget::initializeGL() {
     void main() {
 //        gl_FragColor = vec4(texCoordFrag, 1);
         gl_FragColor = texture3D(textureCentral, texCoordFrag);
-        vec4 left = texCoordFrag.x == 0.0f ? texture3D(textureLeft, vec3(cubeedgelength, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
-        vec4 right = texCoordFrag.x == cubeedgelength ? texture3D(textureRight, vec3(0, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
-        vec4 top = texCoordFrag.y == 0.0f ? texture3D(textureTop, vec3(texCoordFrag.x, cubeedgelength, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
-        vec4 bottom = texCoordFrag.y == cubeedgelength ? texture3D(textureBottom, vec3(texCoordFrag.x, 0, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
-        vec4 center = texture3D(textureCentral, texCoordFrag);
-        center = mix(left, center, 0.5);
-        center = mix(right, center, 0.5);
-        center = mix(top, center, 0.5);
+//        vec4 left = texCoordFrag.x == 0.0f ? texture3D(textureLeft, vec3(cubeedgelength, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
+//        vec4 right = texCoordFrag.x == cubeedgelength ? texture3D(textureRight, vec3(0, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
+//        vec4 top = texCoordFrag.y == 0.0f ? texture3D(textureTop, vec3(texCoordFrag.x, cubeedgelength, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
+//        vec4 bottom = texCoordFrag.y == cubeedgelength ? texture3D(textureBottom, vec3(texCoordFrag.x, 0, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
+//        vec4 center = texture3D(textureCentral, texCoordFrag);
+//        center = mix(left, center, 0.5);
+//        center = mix(right, center, 0.5);
+//        center = mix(top, center, 0.5);
 //        gl_FragColor = mix(bottom, center, 0.5);
     })shaderSource");
 
