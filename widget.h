@@ -2,8 +2,8 @@
 #define WIDGET_H
 
 #include <QGLFormat>
-#include <QGLWidget>
-#include <QGLShaderProgram>
+#include <QOpenGLWidget>
+#include <QOpenGLShaderProgram>
 #include <QOpenGLFunctions_2_0>
 #include <QOpenGLDebugLogger>
 #include <QOpenGLTexture>
@@ -13,7 +13,7 @@
 
 #include <boost/multi_array.hpp>
 
-class widget : public QGLWidget, protected QOpenGLFunctions_2_0 {
+class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     virtual void initializeGL() override final;
     virtual void paintGL() override final;
     virtual void resizeGL(int, int) override final;
@@ -29,7 +29,7 @@ class widget : public QGLWidget, protected QOpenGLFunctions_2_0 {
     const int supercubeedge = 5;
 
     QOpenGLDebugLogger ogllogger;
-    QGLShaderProgram program{context()->contextHandle()};
+    QOpenGLShaderProgram program;
 public:
     widget();
 };

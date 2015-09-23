@@ -29,8 +29,9 @@ QGLContext * newFavoriteQGLContext() {
 
 widget::widget() : //QGLWidget(newFavoriteQGLContext()),
         twister(std::random_device{}()), dist(0.0, 1.0) {
-    qDebug() << context()->contextHandle()->format().swapBehavior() << ' ' << context()->contextHandle()->format().swapInterval();
-    QObject::connect(&continuousRefresh, &QTimer::timeout, this, &QGLWidget::updateGL);
+    //qDebug() << context()->contextHandle()->format().swapBehavior() << ' ' << context()->contextHandle()->format().swapInterval();
+
+    //QObject::connect(&continuousRefresh, &QTimer::timeout, this, &QGLWidget::updateGL);
     continuousRefresh.start(0);
     resize(128*supercubeedge, 128*supercubeedge);
 }
@@ -72,7 +73,8 @@ void widget::initializeGL() {
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        std::string path = "/run/media/mobile/00AAEB91AAEB8210/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
+        std::string path = "/home/al3xst/Downloads/hackathon/3DTexture-build/cube.raw";
+        //std::string path = "/run/media/mobile/00AAEB91AAEB8210/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
         std::ifstream file(path, std::ios_base::binary);
@@ -111,9 +113,9 @@ void widget::initializeGL() {
 //    glOrtho(-1, 1, -1, 1, 0.1, 10);
 //    glMatrixMode(GL_MODELVIEW);
 
-    setAutoBufferSwap(false);
+    //setAutoBufferSwap(false);
 
-    program.addShaderFromSourceCode(QGLShader::Vertex,R"shaderSource(
+    program.addShaderFromSourceCode(QOpenGLShader::Vertex,R"shaderSource(
     //#version 110
     uniform mat4 projection_matrix;
     uniform vec4 modelview_vec;
@@ -131,7 +133,7 @@ void widget::initializeGL() {
         texCoordFrag = texCoordVertex;
     })shaderSource");
 
-    program.addShaderFromSourceCode(QGLShader::Fragment,R"shaderSource(
+    program.addShaderFromSourceCode(QOpenGLShader::Fragment,R"shaderSource(
     //#version 110
     uniform sampler3D textureCentral;
     uniform sampler3D textureLeft;
@@ -279,7 +281,9 @@ void widget::paintGL() {
     glEnd();
     //*/
     times.recordSample();
-    swapBuffers();
+
+    update();
+
     times.recordSample();
     qDebug() << "render time: " << times.waitForIntervals();
 
@@ -294,5 +298,4 @@ void widget::wheelEvent(QWheelEvent * const event) {
     frame += direction / 120;
     frame = std::fmod(frame, 128);
     std::cout << direction << " " << event->angleDelta().y() << " " << frame << std::endl;
-    updateGL();
 }
