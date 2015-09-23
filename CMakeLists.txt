@@ -6,7 +6,6 @@ if(NOT CMAKE_BUILD_TYPE)#prevent accidental debug builds
 endif()
 
 include(CMake/cotire.cmake)
-include(CMake/PreCompiledHeader.cmake)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -36,7 +35,6 @@ target_link_libraries(${PROJECT_NAME}
     Qt5::OpenGLExtensions
     Qt5::Widgets
 )
-#cotire(${PROJECT_NAME})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winvalid-pch")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -H")
@@ -46,4 +44,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-ld=gold")
 
-add_precompiled_header(pch.h)
+cotire(${PROJECT_NAME})
+set(COTIRE_MINIMUM_NUMBER_OF_TARGET_SOURCES 1)
