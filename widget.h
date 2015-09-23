@@ -32,6 +32,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     QOpenGLShaderProgram program;
 public:
     widget();
+    ~widget();
 };
 
 #endif//WIDGET_H

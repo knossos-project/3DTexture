@@ -36,6 +36,11 @@ widget::widget() : //QGLWidget(newFavoriteQGLContext()),
     resize(128*supercubeedge, 128*supercubeedge);
 }
 
+widget::~widget() {
+    makeCurrent();
+    glDeleteTextures(textures.num_elements(), textures.data());
+}
+
 void widget::initializeGL() {
     initializeOpenGLFunctions();
     ogllogger.initialize();
