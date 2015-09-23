@@ -31,7 +31,9 @@ QGLContext * newFavoriteQGLContext() {
 
 widget::widget() : //QGLWidget(newFavoriteQGLContext()),
         twister(std::random_device{}()), dist(0.0, 1.0) {
-    //QObject::connect(&continuousRefresh, &QTimer::timeout, this, &QOpenGLWidget::update);
+    //qDebug() << context()->format().swapBehavior() << ' ' << context()->format().swapInterval();
+
+    QObject::connect(&continuousRefresh, &QTimer::timeout, this, static_cast<void (QOpenGLWidget::*)()>(&QOpenGLWidget::update));
     continuousRefresh.start(0);
     resize(128*supercubeedge, 128*supercubeedge);
 }
@@ -126,19 +128,17 @@ void widget::initializeGL() {
 
     program.addShaderFromSourceCode(QOpenGLShader::Vertex,R"shaderSource(
     //#version 110
+    uniform mat4 model_matrix;
+    uniform mat4 view_matrix;
     uniform mat4 projection_matrix;
-    uniform vec4 modelview_vec;
     attribute vec3 vertex;
     attribute vec3 texCoordVertex;
     varying vec3 texCoordFrag;
     void main() {
-        gl_Position = modelview_vec.w * projection_matrix *
-            mat4(
-                1,0,0,0
-                ,0,1,0,0
-                ,0,0,1,0
-                ,modelview_vec.xyz,1
-            ) * vec4(vertex, 1);
+        vec4 vWorld = model_matrix * vec4(vertex, 1);
+        vec4 vEye = view_matrix * vWorld;
+        vec4 vClip = projection_matrix * vEye;
+        gl_Position = vClip;
         texCoordFrag = texCoordVertex;
     })shaderSource");
 
@@ -170,6 +170,17 @@ void widget::initializeGL() {
     program.bind();
 }
 
+void widget::mouseMoveEvent(QMouseEvent *event) {
+    auto test = mouseDown - event->pos();
+    deviation += {test.x(), test.y(), 0};
+    deviation = {std::fmod(deviation.x(), 128), std::fmod(deviation.y(), 128), std::fmod(deviation.z(), 128)};
+    mouseDown = event->pos();
+}
+
+void widget::mousePressEvent(QMouseEvent *event) {
+    mouseDown = event->pos();
+}
+
 void widget::resizeGL(int width, int height) {
     glViewport(0, 0, width, height);
 }
@@ -177,14 +188,15 @@ void widget::resizeGL(int width, int height) {
 void widget::paintGL() {
     static QElapsedTimer time;
     qDebug() << time.restart();
+
 //    const auto start = std::chrono::high_resolution_clock::now();
 //    glClearColor(dist(twister), dist(twister), dist(twister), 0);
 
-    for (int y = 0; y < supercubeedge; ++y)
-    for (int x = 0; x < supercubeedge; ++x) {
+//    for (int y = 0; y < supercubeedge; ++y)
+//    for (int x = 0; x < supercubeedge; ++x) {
 //        glBindTexture(GL_TEXTURE_3D, textures[y][x]);
 //        glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE8, 128, 128, 128, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data.data());//8 bit per pixel
-    }
+//    }
 
     QOpenGLTimeMonitor times;
     times.setSampleCount(3);
@@ -194,8 +206,8 @@ void widget::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //*
 
-    const float width = 1.0;
-    const float height = 1.0;
+    const float width = 1.f*this->width();
+    const float height = 1.f*this->height();
     std::vector<std::array<GLfloat, 3>> triangleVertices;
     std::vector<std::array<GLfloat, 3>> textureVertices;
     for (float y = 0; y < supercubeedge; ++y)
@@ -204,8 +216,8 @@ void widget::paintGL() {
         auto starty = y * (height / supercubeedge);
         auto endx = startx + width / supercubeedge;
         auto endy = starty + height / supercubeedge;
-        auto starttexR = (0.5f + frame) / 128.0f;
-        auto endtexR = (0.5f + frame) / 128.0f;
+        auto starttexR = (0.5f + frame + deviation.z()) / 128.0f;
+        auto endtexR = (0.5f + frame + deviation.z()) / 128.0f;
 
         triangleVertices.push_back({startx, starty, 0});
         triangleVertices.push_back({startx, endy, 0});
@@ -218,9 +230,11 @@ void widget::paintGL() {
         textureVertices.push_back({1.0f, 1.0f, endtexR});
     }
 
-    QMatrix4x4 pmvMatrix;
-    pmvMatrix.ortho(0, width, 0, height, -1, 1);
-    QVector4D mdlVector{0, 0, 0, 1};
+    QMatrix4x4 modelMatrix;//identity
+    QMatrix4x4 viewMatrix;//identity
+    QMatrix4x4 projectionMatrix;
+    projectionMatrix.ortho(0, width, 0, height, -1, 1);
+    viewMatrix.translate(deviation / QVector3D{-1.f, 1.f, 1});
 
     int vertexLocation = program.attributeLocation("vertex");
     int texLocation = program.attributeLocation("texCoordVertex");
@@ -228,8 +242,9 @@ void widget::paintGL() {
     program.enableAttributeArray(texLocation);
     program.setAttributeArray(vertexLocation, triangleVertices.data()->data(), 3);
     program.setAttributeArray(texLocation, textureVertices.data()->data(), 3);
-    program.setUniformValue("projection_matrix", pmvMatrix);
-    program.setUniformValue("modelview_vec", mdlVector);
+    program.setUniformValue("model_matrix", modelMatrix);
+    program.setUniformValue("view_matrix", viewMatrix);
+    program.setUniformValue("projection_matrix", projectionMatrix);
     program.setUniformValue("textureCentral", 0);
     program.setUniformValue("textureLeft", 1);
     program.setUniformValue("textureRight", 2);
@@ -237,11 +252,10 @@ void widget::paintGL() {
     program.setUniformValue("textureBottom", 4);
     program.setUniformValue("cubeedgelength", 128.0f);
 
-
     for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
-		glActiveTexture(GL_TEXTURE0);
-		// glBindTexture(GL_TEXTURE_3D, textures[y][x]);
+        glActiveTexture(GL_TEXTURE0);
+        //glBindTexture(GL_TEXTURE_3D, textures[y][x]);
         textures2[y][x]->bind();
 //		glActiveTexture(GL_TEXTURE1);
 //		glBindTexture(GL_TEXTURE_3D, textures[x-1][y]);

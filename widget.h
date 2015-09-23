@@ -15,6 +15,8 @@
 
 class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     virtual void initializeGL() override final;
+    virtual void mouseMoveEvent(QMouseEvent * event) override final;
+    virtual void mousePressEvent(QMouseEvent * event) override final;
     virtual void paintGL() override final;
     virtual void resizeGL(int, int) override final;
     virtual void wheelEvent(QWheelEvent * const) override final;
@@ -27,6 +29,8 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     std::vector<char> data;
     int frame = 0;
     const int supercubeedge = 5;
+    QPoint mouseDown;
+    QVector3D deviation;
 
     QOpenGLDebugLogger ogllogger;
     QOpenGLShaderProgram program;
