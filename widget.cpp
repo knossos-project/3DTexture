@@ -113,8 +113,6 @@ void widget::initializeGL() {
 //    glOrtho(-1, 1, -1, 1, 0.1, 10);
 //    glMatrixMode(GL_MODELVIEW);
 
-    //setAutoBufferSwap(false);
-
     program.addShaderFromSourceCode(QOpenGLShader::Vertex,R"shaderSource(
     //#version 110
     uniform mat4 projection_matrix;
@@ -282,9 +280,6 @@ void widget::paintGL() {
     //*/
     times.recordSample();
 
-    update();
-
-    times.recordSample();
     qDebug() << "render time: " << times.waitForIntervals();
 
 //    const auto end = std::chrono::high_resolution_clock::now();
@@ -298,4 +293,5 @@ void widget::wheelEvent(QWheelEvent * const event) {
     frame += direction / 120;
     frame = std::fmod(frame, 128);
     std::cout << direction << " " << event->angleDelta().y() << " " << frame << std::endl;
+    update();
 }
