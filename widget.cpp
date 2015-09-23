@@ -171,8 +171,8 @@ void widget::paintGL() {
 
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
-        glBindTexture(GL_TEXTURE_3D, textures[y][x]);
-        glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE8, 128, 128, 128, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data.data());//8 bit per pixel
+//        glBindTexture(GL_TEXTURE_3D, textures[y][x]);
+//        glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE8, 128, 128, 128, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data.data());//8 bit per pixel
     }
 
     QOpenGLTimeMonitor times;
