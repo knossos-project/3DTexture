@@ -189,15 +189,17 @@ void widget::paintGL() {
     std::vector<std::array<GLfloat, 3>> textureVertices;
     for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
-        auto starty = y * (height / supercubeedge);
         auto startx = x * (width / supercubeedge);
+        auto starty = y * (height / supercubeedge);
+        auto endx = startx + width / supercubeedge;
+        auto endy = starty + height / supercubeedge;
         auto starttexR = (0.5f + frame) / 128.0f;
         auto endtexR = (0.5f + frame) / 128.0f;
 
         triangleVertices.push_back({startx, starty, 0});
-        triangleVertices.push_back({startx, starty + height / supercubeedge, 0});
-        triangleVertices.push_back({startx + width / supercubeedge, starty + height / supercubeedge, 0});
-        triangleVertices.push_back({startx + width / supercubeedge, starty, 0});
+        triangleVertices.push_back({startx, endy, 0});
+        triangleVertices.push_back({endx, endy, 0});
+        triangleVertices.push_back({endx, starty, 0});
 
         textureVertices.push_back({0.0f, 1.0f, starttexR});
         textureVertices.push_back({0.0f, 0.0f, starttexR});
