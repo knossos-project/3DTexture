@@ -93,12 +93,13 @@ void widget::initializeGL() {
 //        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
         std::ifstream file(path, std::ios_base::binary);
+        data.resize(128*128*128);
         if (file) {
             //data = std::vector<char>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>{});
-            data.resize(128*128*128);
             file.read(data.data(), data.size());
             //std::cout << path << " loaded" << std::endl;
         } else {
+            std::fill(std::begin(data), std::end(data), 127);
             std::cout << path << " failed" << std::endl;
             continue;
         }
