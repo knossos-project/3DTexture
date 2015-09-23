@@ -15,22 +15,8 @@
 #include <sstream>
 #include <vector>
 
-QGLContext * newFavoriteQGLContext() {
-    auto * context = new QOpenGLContext;
-
-    QSurfaceFormat format;
-    format.setMajorVersion(2);
-    format.setMinorVersion(0);
-    //format.setSwapBehavior(QSurfaceFormat::SingleBuffer);
-    format.setProfile(QSurfaceFormat::NoProfile);
-    format.setOption(QSurfaceFormat::DebugContext);
-    context->setFormat(format);
-    context->create();
-    return QGLContext::fromOpenGLContext(context);
-}
-
-widget::widget() : //QGLWidget(newFavoriteQGLContext()),
-        twister(std::random_device{}()), dist(0.0, 1.0) {
+widget::widget() : twister(std::random_device{}()), dist(0.0, 1.0) {
+    //qDebug() << context()->format().swapBehavior() << ' ' << context()->format().swapInterval();
 
     QObject::connect(&continuousRefresh, &QTimer::timeout, this, static_cast<void (QOpenGLWidget::*)()>(&QOpenGLWidget::update));
     continuousRefresh.start(0);
