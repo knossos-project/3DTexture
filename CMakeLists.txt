@@ -50,5 +50,5 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(${PROJECT_NAME} PRIVATE "-fdiagnostics-color=always")
 endif()
 
-cotire(${PROJECT_NAME})
 set(COTIRE_MINIMUM_NUMBER_OF_TARGET_SOURCES 1)
+cotire(${PROJECT_NAME})
