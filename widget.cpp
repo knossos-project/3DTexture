@@ -101,7 +101,6 @@ void widget::initializeGL() {
         } else {
             std::fill(std::begin(data), std::end(data), 127);
             std::cout << path << " failed" << std::endl;
-            continue;
         }
         // glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE8, 128, 128, 128, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data.data());//8 bit per pixel
 //        data[0] = 0;
