@@ -191,8 +191,8 @@ void widget::paintGL() {
     for (float x = 0; x < supercubeedge; ++x) {
 	    auto starty = y * (height / supercubeedge);
 	    auto startx = x * (width / supercubeedge);
-	    auto starttexR = (0.5f + frame / supercubeedge * x) / 128.0f;
-	    auto endtexR = (0.5f + frame / supercubeedge * (x + 1)) / 128.0f;
+	    auto starttexR = (0.5f + frame) / 128.0f;
+	    auto endtexR = (0.5f + frame) / 128.0f;
 
 	    triangleVertices.push_back({startx, starty, 0});
 	    triangleVertices.push_back({startx, starty + height / supercubeedge, 0});
