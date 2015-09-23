@@ -28,6 +28,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     std::vector<char> data;
     int frame = 0;
     const int supercubeedge = 5;
+    const int cubeedge = 64;
     QPoint mouseDown;
     QVector3D deviation;
 
