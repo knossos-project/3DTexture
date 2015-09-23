@@ -189,20 +189,20 @@ void widget::paintGL() {
     std::vector<std::array<GLfloat, 3>> textureVertices;
     for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
-	    auto starty = y * (height / supercubeedge);
-	    auto startx = x * (width / supercubeedge);
-	    auto starttexR = (0.5f + frame) / 128.0f;
-	    auto endtexR = (0.5f + frame) / 128.0f;
+        auto starty = y * (height / supercubeedge);
+        auto startx = x * (width / supercubeedge);
+        auto starttexR = (0.5f + frame) / 128.0f;
+        auto endtexR = (0.5f + frame) / 128.0f;
 
-	    triangleVertices.push_back({startx, starty, 0});
-	    triangleVertices.push_back({startx, starty + height / supercubeedge, 0});
-	    triangleVertices.push_back({startx + width / supercubeedge, starty + height / supercubeedge, 0});
-	    triangleVertices.push_back({startx + width / supercubeedge, starty, 0});
+        triangleVertices.push_back({startx, starty, 0});
+        triangleVertices.push_back({startx, starty + height / supercubeedge, 0});
+        triangleVertices.push_back({startx + width / supercubeedge, starty + height / supercubeedge, 0});
+        triangleVertices.push_back({startx + width / supercubeedge, starty, 0});
 
-	    textureVertices.push_back({0.0f, 1.0f, starttexR});
-	    textureVertices.push_back({0.0f, 0.0f, starttexR});
-	    textureVertices.push_back({1.0f, 0.0f, endtexR});
-	    textureVertices.push_back({1.0f, 1.0f, endtexR});
+        textureVertices.push_back({0.0f, 1.0f, starttexR});
+        textureVertices.push_back({0.0f, 0.0f, starttexR});
+        textureVertices.push_back({1.0f, 0.0f, endtexR});
+        textureVertices.push_back({1.0f, 1.0f, endtexR});
     }
 
     QMatrix4x4 pmvMatrix;
@@ -225,10 +225,10 @@ void widget::paintGL() {
     program.setUniformValue("cubeedgelength", 128.0f);
 
 
-	for (float y = 0; y < supercubeedge; ++y)
+    for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_3D, textures[y][x]);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_3D, textures[y][x]);
 //		glActiveTexture(GL_TEXTURE1);
 //		glBindTexture(GL_TEXTURE_3D, textures[x-1][y]);
 //		glActiveTexture(GL_TEXTURE2);
@@ -238,8 +238,8 @@ void widget::paintGL() {
 //		glActiveTexture(GL_TEXTURE4);
 //		glBindTexture(GL_TEXTURE_3D, textures[x][y+1]);
 
-		glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
-	}
+        glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
+    }
 
     program.disableAttributeArray(vertexLocation);
     program.disableAttributeArray(texLocation);
