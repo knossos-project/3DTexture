@@ -185,8 +185,6 @@ void widget::paintGL() {
 
     const float width = 1.0;
     const float height = 1.0;
-    float x = 0;
-    float y = 0;
     std::vector<std::array<GLfloat, 3>> triangleVertices;
     std::vector<std::array<GLfloat, 3>> textureVertices;
     for (float y = 0; y < supercubeedge; ++y)
@@ -226,18 +224,22 @@ void widget::paintGL() {
     program.setUniformValue("textureBottom", 4);
     program.setUniformValue("cubeedgelength", 128.0f);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_3D, textures[x][y]);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_3D, textures[x-1][y]);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_3D, textures[x+1][y]);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_3D, textures[x][y-1]);
-    glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_3D, textures[x][y+1]);
 
-    glDrawArrays(GL_QUADS, 0, 4*supercubeedge*supercubeedge);
+	for (float y = 0; y < supercubeedge; ++y)
+    for (float x = 0; x < supercubeedge; ++x) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_3D, textures[y][x]);
+//		glActiveTexture(GL_TEXTURE1);
+//		glBindTexture(GL_TEXTURE_3D, textures[x-1][y]);
+//		glActiveTexture(GL_TEXTURE2);
+//		glBindTexture(GL_TEXTURE_3D, textures[x+1][y]);
+//		glActiveTexture(GL_TEXTURE3);
+//		glBindTexture(GL_TEXTURE_3D, textures[x][y-1]);
+//		glActiveTexture(GL_TEXTURE4);
+//		glBindTexture(GL_TEXTURE_3D, textures[x][y+1]);
+
+		glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
+	}
 
     program.disableAttributeArray(vertexLocation);
     program.disableAttributeArray(texLocation);
