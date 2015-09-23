@@ -152,8 +152,8 @@ void widget::initializeGL() {
 
 void widget::mouseMoveEvent(QMouseEvent *event) {
     auto test = mouseDown - event->pos();
-    deviation += {test.x(), test.y(), 0};
-    deviation = {std::fmod(deviation.x(), 128), std::fmod(deviation.y(), 128), std::fmod(deviation.z(), 128)};
+    deviation += QVector3D(test.x(), test.y(), 0);
+    deviation = {std::fmod(deviation.x(), 128.f), std::fmod(deviation.y(), 128.f), std::fmod(deviation.z(), 128.f)};
     mouseDown = event->pos();
 }
 
@@ -189,15 +189,15 @@ void widget::paintGL() {
         auto starttexR = (0.5f + frame + deviation.z()) / 128.0f;
         auto endtexR = (0.5f + frame + deviation.z()) / 128.0f;
 
-        triangleVertices.push_back({startx, starty, 0});
-        triangleVertices.push_back({startx, endy, 0});
-        triangleVertices.push_back({endx, endy, 0});
-        triangleVertices.push_back({endx, starty, 0});
+        triangleVertices.push_back({{startx, starty, 0}});
+        triangleVertices.push_back({{startx, endy, 0}});
+        triangleVertices.push_back({{endx, endy, 0}});
+        triangleVertices.push_back({{endx, starty, 0}});
 
-        textureVertices.push_back({0.0f, 1.0f, starttexR});
-        textureVertices.push_back({0.0f, 0.0f, starttexR});
-        textureVertices.push_back({1.0f, 0.0f, endtexR});
-        textureVertices.push_back({1.0f, 1.0f, endtexR});
+        textureVertices.push_back({{0.0f, 1.0f, starttexR}});
+        textureVertices.push_back({{0.0f, 0.0f, starttexR}});
+        textureVertices.push_back({{1.0f, 0.0f, endtexR}});
+        textureVertices.push_back({{1.0f, 1.0f, endtexR}});
     }
 
     QMatrix4x4 modelMatrix;//identity
