@@ -21,8 +21,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     virtual void resizeGL(int, int) override final;
     virtual void wheelEvent(QWheelEvent * const) override final;
 
-    boost::multi_array<GLuint, 2> textures;
-    boost::multi_array<QOpenGLTexture*, 2> textures2;
+    boost::multi_array<QOpenGLTexture*, 2> textures;
     QTimer continuousRefresh;
     std::mt19937_64 twister;
     std::uniform_real_distribution<> dist;

@@ -40,8 +40,7 @@ widget::widget() : //QGLWidget(newFavoriteQGLContext()),
 
 widget::~widget() {
     makeCurrent();
-    glDeleteTextures(textures.num_elements(), textures.data());
-    for (auto & texture : boost::make_iterator_range(textures2.data(), textures2.data() + textures2.num_elements())) {
+    for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         delete texture;
     }
 }
@@ -61,22 +60,17 @@ void widget::initializeGL() {
     std::cout << "MultiTexture: " << iUnits << ' ' << texture_units << ' ' << max_tu << std::endl;
 
     const auto dims = boost::extents[supercubeedge][supercubeedge];
-    textures.resize(dims);
-    for (auto & texture : boost::make_iterator_range(textures2.data(), textures2.data() + textures2.num_elements())) {
+    for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         delete texture;
     }
-    textures2.resize(dims);
-    for (auto & texture : boost::make_iterator_range(textures2.data(), textures2.data() + textures2.num_elements())) {
+    textures.resize(dims);
+    for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         texture = nullptr;
     }
-    glGenTextures(textures.num_elements(), textures.data());
 
     glEnable(GL_TEXTURE_3D);
     glEnable(GL_DEPTH_TEST);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);// our texture colors will replace the untextured colors
     glClearColor(1.0, 1.0, 1.0, 1.0);
-    glColor4d(0.0, 0.0, 0.0, 1.0);
-    glPointSize(3.0);
 
     std::ios_base::sync_with_stdio(false);
 
@@ -84,11 +78,6 @@ void widget::initializeGL() {
     for (int x = 0; x < supercubeedge; ++x) {
         QElapsedTimer time;
         time.start();
-        glBindTexture(GL_TEXTURE_3D, textures[y][x]);
-        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR_MIPMAP_LINEAR
-        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         std::string path = "cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
@@ -102,12 +91,9 @@ void widget::initializeGL() {
             std::fill(std::begin(data), std::end(data), 127);
             std::cout << path << " failed" << std::endl;
         }
-        // glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE8, 128, 128, 128, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data.data());//8 bit per pixel
-//        data[0] = 0;
-//        data[127] = -1;e
         //std::cout << time.restart() << ' ';
-        textures2[y][x] = new QOpenGLTexture(QOpenGLTexture::Target3D);
-        QOpenGLTexture & texture = *textures2[y][x];
+        textures[y][x] = new QOpenGLTexture(QOpenGLTexture::Target3D);
+        QOpenGLTexture & texture = *textures[y][x];
         texture.setAutoMipMapGenerationEnabled(false);
         //texture.setFormat(QOpenGLTexture::LuminanceFormat);
         texture.setSize(128, 128, 128);
@@ -119,12 +105,6 @@ void widget::initializeGL() {
         texture.allocateStorage();
         texture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data.data());
     }
-
-//    glMatrixMode(GL_PROJECTION);
-//    //gluPerspective(90, 4.0/3.0, 0.1, 10.0);
-//    glLoadIdentity();
-//    glOrtho(-1, 1, -1, 1, 0.1, 10);
-//    glMatrixMode(GL_MODELVIEW);
 
     program.addShaderFromSourceCode(QOpenGLShader::Vertex,R"shaderSource(
     //#version 110
@@ -189,22 +169,12 @@ void widget::paintGL() {
     static QElapsedTimer time;
     qDebug() << time.restart();
 
-//    const auto start = std::chrono::high_resolution_clock::now();
-//    glClearColor(dist(twister), dist(twister), dist(twister), 0);
-
-//    for (int y = 0; y < supercubeedge; ++y)
-//    for (int x = 0; x < supercubeedge; ++x) {
-//        glBindTexture(GL_TEXTURE_3D, textures[y][x]);
-//        glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE8, 128, 128, 128, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data.data());//8 bit per pixel
-//    }
-
     QOpenGLTimeMonitor times;
     times.setSampleCount(3);
     times.create();
     times.recordSample();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    //*
 
     const float width = 1.f*this->width();
     const float height = 1.f*this->height();
@@ -254,66 +224,15 @@ void widget::paintGL() {
 
     for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
-        glActiveTexture(GL_TEXTURE0);
-        //glBindTexture(GL_TEXTURE_3D, textures[y][x]);
-        textures2[y][x]->bind();
-//		glActiveTexture(GL_TEXTURE1);
-//		glBindTexture(GL_TEXTURE_3D, textures[x-1][y]);
-//		glActiveTexture(GL_TEXTURE2);
-//		glBindTexture(GL_TEXTURE_3D, textures[x+1][y]);
-//		glActiveTexture(GL_TEXTURE3);
-//		glBindTexture(GL_TEXTURE_3D, textures[x][y-1]);
-//		glActiveTexture(GL_TEXTURE4);
-//		glBindTexture(GL_TEXTURE_3D, textures[x][y+1]);
-
+        textures[y][x]->bind();
         glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
     }
 
     program.disableAttributeArray(vertexLocation);
     program.disableAttributeArray(texLocation);
-    /*/
-    const double width = 2.0;
-    const double height = 2.0;
-
-    glLoadIdentity();
-    glTranslated(0, 0, -1);
-    glEnable(GL_TEXTURE_3D);
-
-    for (double y = 0; y < supercubeedge; ++y)
-    for (double x = 0; x < supercubeedge; ++x) {
-        double starty = -1.0 + y * (height / supercubeedge);
-        double startx = -1.0 + x * (width / supercubeedge);
-        auto starttexR = (0.5 + frame / supercubeedge * x) / 128.0;//
-        auto endtexR = (0.5 + frame / supercubeedge * (x + 1)) / 128.0;//
-        textures2[y * supercubeedge + x]->bind();
-        //glBindTexture(GL_TEXTURE_3D, textures[y][x]);
-        glBegin(GL_QUADS);
-            glTexCoord3d(0.0, 1.0, starttexR);
-            glVertex3d(startx, starty, 0);
-            glTexCoord3d(0.0, 0.0, starttexR);
-            glVertex3d(startx, starty + height / supercubeedge, 0);
-            glTexCoord3d(1.0, 0.0, endtexR);
-            glVertex3d(startx + width / supercubeedge, starty + height / supercubeedge, 0);
-            glTexCoord3d(1.0, 1.0, endtexR);
-            glVertex3d(startx + width / supercubeedge, starty, 0);
-        glEnd();
-    }
-
-    glDisable(GL_TEXTURE_3D);
-    glColor4d(1, 0, 0, 1);
-    glPointSize(3.0);
-    glBegin(GL_POINTS);
-        glVertex3d(0, 0, 0.1);
-    glEnd();
-    //*/
     times.recordSample();
 
     qDebug() << "render time: " << times.waitForIntervals();
-
-//    const auto end = std::chrono::high_resolution_clock::now();
-//    auto mspf = time.elapsed();//std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()/1000.0/1000.0;
-//    auto fps = 1000.0 / (mspf != 0 ? mspf : 1);
-//    std::cout << mspf << " mpfs – \t" << fps << " fps" << std::endl;
 }
 
 void widget::wheelEvent(QWheelEvent * const event) {
