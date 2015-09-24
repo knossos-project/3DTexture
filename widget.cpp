@@ -85,6 +85,7 @@ void widget::initializeGL() {
         texture.setMinificationFilter(QOpenGLTexture::Linear);
         texture.setMagnificationFilter(QOpenGLTexture::Linear);
         texture.setFormat(QOpenGLTexture::R8_UNorm);
+        texture.setWrapMode(QOpenGLTexture::ClampToEdge);
         texture.allocateStorage();
 
         boost::multi_array_ref<char, 3> cube(data.data(), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
