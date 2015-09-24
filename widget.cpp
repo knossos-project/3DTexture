@@ -21,7 +21,7 @@ widget::widget() : twister(std::random_device{}()), dist(0.0, 1.0) {
 
     QObject::connect(&continuousRefresh, &QTimer::timeout, this, static_cast<void (QOpenGLWidget::*)()>(&QOpenGLWidget::update));
     continuousRefresh.start(0);
-    resize(cubeedge * supercubeedge, cubeedge * supercubeedge);
+    resize(gpucubeedge * supercubeedge, gpucubeedge * supercubeedge);
 }
 
 widget::~widget() {
@@ -64,11 +64,12 @@ void widget::initializeGL() {
     for (int x = 0; x < supercubeedge; ++x) {
         QElapsedTimer time;
         time.start();
-        std::string path = "cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
+        const auto factor = cpucubeedge / gpucubeedge;
+        std::string path = "cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x/factor) + "_y00" + std::to_string(52-y/factor) + "_z0023.raw";
 //        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
         std::ifstream file(path, std::ios_base::binary);
-        data.resize(std::pow(cubeedge, 3));
+        data.resize(std::pow(cpucubeedge, 3));
         if (file) {
             file.read(data.data(), data.size());
         } else {
@@ -79,13 +80,26 @@ void widget::initializeGL() {
         textures[y][x] = new QOpenGLTexture(QOpenGLTexture::Target3D);
         QOpenGLTexture & texture = *textures[y][x];
         texture.setAutoMipMapGenerationEnabled(false);
-        texture.setSize(cubeedge, cubeedge, cubeedge);
+        texture.setSize(gpucubeedge, gpucubeedge, gpucubeedge);
         texture.setMipLevels(1);
         texture.setMinificationFilter(QOpenGLTexture::Linear);
         texture.setMagnificationFilter(QOpenGLTexture::Linear);
         texture.setFormat(QOpenGLTexture::R8_UNorm);
         texture.allocateStorage();
-        texture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data.data());
+
+        boost::multi_array_ref<char, 3> cube(data.data(), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
+        const auto x_offset = gpucubeedge * (x % factor);
+        const auto y_offset = gpucubeedge * (y % factor);
+        const auto z_offset = 0;
+        using range = boost::multi_array_types::index_range;
+        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(cpucubeedge-gpucubeedge-y_offset,cpucubeedge-0-y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
+        std::vector<char> data2;
+        for (const auto & d2 : view)
+        for (const auto & d1 : d2)
+        for (const auto & elem : d1) {
+            data2.emplace_back(elem);
+        }
+        texture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data2.data());
     }
 
     program.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
@@ -135,7 +149,7 @@ void widget::initializeGL() {
 void widget::mouseMoveEvent(QMouseEvent *event) {
     auto test = mouseDown - event->pos();
     deviation += QVector3D(test.x(), test.y(), 0);
-    const float cubeedgef = cubeedge;
+    const float cubeedgef = gpucubeedge;
     deviation = {std::fmod(deviation.x(), cubeedgef), std::fmod(deviation.y(), cubeedgef), std::fmod(deviation.z(), cubeedgef)};
     mouseDown = event->pos();
 }
@@ -169,7 +183,7 @@ void widget::paintGL() {
         auto starty = y * (height / supercubeedge);
         auto endx = startx + width / supercubeedge;
         auto endy = starty + height / supercubeedge;
-        const float cubeedgef = cubeedge;
+        const float cubeedgef = gpucubeedge;
         auto starttexR = (0.5f + frame + deviation.z()) / cubeedgef;
         auto endtexR = (0.5f + frame + deviation.z()) / cubeedgef;
 
@@ -204,7 +218,7 @@ void widget::paintGL() {
     program.setUniformValue("textureRight", 2);
     program.setUniformValue("textureTop", 3);
     program.setUniformValue("textureBottom", 4);
-    const float cubeedgef = cubeedge;
+    const float cubeedgef = gpucubeedge;
     program.setUniformValue("cubeedgelength", cubeedgef);
 
     for (float y = 0; y < supercubeedge; ++y)
@@ -223,8 +237,8 @@ void widget::paintGL() {
 void widget::wheelEvent(QWheelEvent * const event) {
     const int direction = std::trunc(event->angleDelta().y());
     frame += direction / 120;
-    const float cubeedgef = cubeedge;
-    frame = std::fmod(frame, cubeedgef);
+    const float cubeedgef = gpucubeedge;
+    frame = std::fmod(frame+cubeedgef, cubeedgef);
     std::cout << direction << " " << event->angleDelta().y() << " " << frame << std::endl;
     update();
 }
