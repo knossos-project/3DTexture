@@ -51,6 +51,20 @@ void widget::initializeGL() {
     glEnable(GL_DEPTH_TEST);
     glClearColor(1.0, 1.0, 1.0, 1.0);
 
+    lut.reset(new QOpenGLTexture(QOpenGLTexture::Target2D));
+    QOpenGLTexture & texture = *lut;
+    texture.setAutoMipMapGenerationEnabled(false);
+    texture.setSize(1024, 1024);
+    texture.setMipLevels(1);
+    texture.setMinificationFilter(QOpenGLTexture::Nearest);
+    texture.setMagnificationFilter(QOpenGLTexture::Nearest);
+    texture.setFormat(QOpenGLTexture::RGBA32U);
+    texture.allocateStorage();
+
+    QHash<quint64, quint32> gpuIds;
+    std::vector<std::array<uint8_t, 4>> colors;
+    decltype(gpuIds)::mapped_type highestId = 0;
+
     const auto dims = boost::extents[supercubeedge][supercubeedge];
     for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         delete texture;
@@ -98,9 +112,18 @@ void widget::initializeGL() {
         for (const auto & d2 : view)
         for (const auto & d1 : d2)
         for (const auto & elem : d1) {
-            data2.emplace_back(elem);
+            const auto it = gpuIds.find(elem);
+            const auto existing = it != std::end(gpuIds);
+            const auto id = existing ? *it : (gpuIds[elem] = highestId++);
+            data2.emplace_back(id);
+            if (!existing) {
+                colors.push_back({id, id, id, 255});
+            }
         }
+        colors.resize(lut->width() * lut->height());
+
         texture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data2.data());
+        lut->setData(QOpenGLTexture::RGBA_Integer, QOpenGLTexture::UInt32_RGBA8, colors.data());
     }
 
     program.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
@@ -126,12 +149,16 @@ void widget::initializeGL() {
     uniform sampler3D textureRight;
     uniform sampler3D textureTop;
     uniform sampler3D textureBottom;
+    uniform sampler2D textureLUT;
     uniform float cubeedgelength;
     varying vec3 texCoordFrag;//in
     //varying vec4 gl_FragColor;//out
     void main() {
 //        gl_FragColor = vec4(texCoordFrag, 1);
         gl_FragColor = vec4(vec3(texture3D(textureCentral, texCoordFrag).r), 1.0f);
+        float index = texture3D(textureCentral, texCoordFrag).r;
+        //float size = textureSize(textureLUT).x;
+        //gl_FragColor = texture2D(textureLUT, ivec2((index + 0.5) / size, 0.5));
 //        vec4 left = texCoordFrag.x == 0.0f ? texture3D(textureLeft, vec3(cubeedgelength, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 right = texCoordFrag.x == cubeedgelength ? texture3D(textureRight, vec3(0, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 top = texCoordFrag.y == 0.0f ? texture3D(textureTop, vec3(texCoordFrag.x, cubeedgelength, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
@@ -219,12 +246,16 @@ void widget::paintGL() {
     program.setUniformValue("textureRight", 2);
     program.setUniformValue("textureTop", 3);
     program.setUniformValue("textureBottom", 4);
+    program.setUniformValue("textureLUT", 5);
     const float cubeedgef = gpucubeedge;
     program.setUniformValue("cubeedgelength", cubeedgef);
 
     for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
+        glActiveTexture(GL_TEXTURE0);
         textures[y][x]->bind();
+        glActiveTexture(GL_TEXTURE1);
+        lut->bind();
         glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
     }
 
