@@ -82,6 +82,7 @@ void widget::initializeGL() {
         std::string path = "cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x/factor) + "_y00" + std::to_string(52-y/factor) + "_z0023.raw";
 //        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
+//        std::string path = QString("/run/user/1000/gvfs/sftp:host=soma06,user=npfeiler/lustre/sdorkenw/j0126_cubed_64/mag1/x00%1/y00%2/z0023/2012-03-07_AreaX14_mag1_x00%1_y00%2_z0023.raw").arg(29+x).arg(52-y).toStdString();
         std::ifstream file(path, std::ios_base::binary);
         data.resize(std::pow(cpucubeedge, 3));
         if (file) {
