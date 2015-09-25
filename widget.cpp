@@ -374,10 +374,21 @@ void widget::paintGL() {
 }
 
 void widget::wheelEvent(QWheelEvent * const event) {
-    const int direction = std::trunc(event->angleDelta().y());
-    frame += direction / 120;
+    const auto pixel_scroll_speed = 0.07f;
+    QPoint numPixels = event->pixelDelta();
+    QPoint numDegrees = event->angleDelta() / 8.0f;
+
+    // use pixel scrolling if supported
+    if (!numPixels.isNull()) {
+        frame += numPixels.y() * pixel_scroll_speed;
+    } else if (!numDegrees.isNull()) {
+        QPoint numSteps = numDegrees / 15.0f;
+        frame += numSteps.y();
+    }
+
+    // clip frame to cube edges
     const float cubeedgef = gpucubeedge;
-    frame = std::fmod(frame+cubeedgef, cubeedgef);
-    std::cout << direction << " " << event->angleDelta().y() << " " << frame << std::endl;
+    frame = std::fmod(frame + cubeedgef, cubeedgef);
+
     update();
 }

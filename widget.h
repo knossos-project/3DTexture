@@ -38,7 +38,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     std::uniform_real_distribution<> dist;
     std::vector<char> data;
     std::vector<std::uint16_t> overlay_data;
-    int frame = 0;
+    float frame = 0;
 
     const int supercubeedge = 14;
     const int cpucubeedge = 128;
