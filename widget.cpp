@@ -118,7 +118,7 @@ void widget::initializeGL() {
     varying vec3 texCoordFrag;
     void main() {
         mat4 mvp_mat = projection_matrix * view_matrix * model_matrix;
-        gl_Position = mvp_mat * vec4(vertex, 1.0f);
+        gl_Position = mvp_mat * vec4(vertex, 1.0);
         texCoordFrag = texCoordVertex;
     })shaderSource";
 
