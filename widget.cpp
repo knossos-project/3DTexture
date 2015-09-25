@@ -146,7 +146,7 @@ void widget::initializeGL() {
 
     program.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
     #version 110
-    #extension GL_EXT_gpu_shader4 : enable
+    //#extension GL_EXT_gpu_shader4 : enable
     uniform sampler3D textureCentral;
     uniform sampler3D textureLeft;
     uniform sampler3D textureRight;
@@ -160,9 +160,11 @@ void widget::initializeGL() {
 //        gl_FragColor = vec4(texCoordFrag, 1.0);
 //        gl_FragColor = vec4(vec3(texture3D(textureCentral, texCoordFrag).r), 1.0);
         float index = texture3D(textureCentral, texCoordFrag).r;
-        float size = float(textureSize1D(textureLUT, 0));
+        float size = 1024.0;//float(textureSize1D(textureLUT, 0));
         index *= 256.0;//expand float to uint8 range
         gl_FragColor = texture1D(textureLUT, (index + 0.5) / size);
+        //gl_FragColor = texelFetch(textureLUT, int(index), 0);//requires version 130
+
 //        vec4 left = texCoordFrag.x == 0.0f ? texture3D(textureLeft, vec3(cubeedgelength, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 right = texCoordFrag.x == cubeedgelength ? texture3D(textureRight, vec3(0, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 top = texCoordFrag.y == 0.0f ? texture3D(textureTop, vec3(texCoordFrag.x, cubeedgelength, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
