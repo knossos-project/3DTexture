@@ -118,7 +118,8 @@ void widget::initializeGL() {
             const auto id = existing ? *it : (gpuIds[elem] = highestId++);
             data2.emplace_back(id);
             if (!existing) {
-                colors.push_back({id, id, id, 255});
+                std::uint8_t idc = id;
+                colors.push_back({{idc, 0, 0, 255}});
             }
         }
         colors.resize(lut->width() * lut->height() * lut->depth());
