@@ -75,7 +75,6 @@ void widget::initializeGL() {
     std::vector<std::array<uint8_t, 4>> colors;
     decltype(gpuIds)::mapped_type highestId = 0;
 
-    const auto dims = boost::extents[supercubeedge][supercubeedge];
     for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         delete texture;
     }
@@ -171,22 +170,23 @@ void widget::initializeGL() {
         otexture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt16, overlay_data.data());
     }
 
-    raw_data_shader.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
+    auto vertex_shader_code = R"shaderSource(
     //#version 110
+
     uniform mat4 model_matrix;
     uniform mat4 view_matrix;
     uniform mat4 projection_matrix;
     attribute vec3 vertex;
     attribute vec3 texCoordVertex;
     varying vec3 texCoordFrag;
-    void main() {
-        vec4 vWorld = model_matrix * vec4(vertex, 1);
-        vec4 vEye = view_matrix * vWorld;
-        vec4 vClip = projection_matrix * vEye;
-        gl_Position = vClip;
-        texCoordFrag = texCoordVertex;
-    })shaderSource");
 
+    void main() {
+        mat4 mvp_mat = projection_matrix * view_matrix * model_matrix;
+        gl_Position = mvp_mat * vec4(vertex, 1.0f);
+        texCoordFrag = texCoordVertex;
+    })shaderSource";
+
+    raw_data_shader.addShaderFromSourceCode(QOpenGLShader::Vertex, vertex_shader_code);
     raw_data_shader.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
     //#version 110
     uniform float texture_opacity;
@@ -222,22 +222,7 @@ void widget::initializeGL() {
     raw_data_shader.link();
     raw_data_shader.bind();
 
-    overlay_data_shader.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
-    //#version 110
-
-    uniform mat4 model_matrix;
-    uniform mat4 view_matrix;
-    uniform mat4 projection_matrix;
-    attribute vec3 vertex;
-    attribute vec3 texCoordVertex;
-    varying vec3 texCoordFrag;
-
-    void main() {
-        mat4 mvp_mat = projection_matrix * view_matrix * model_matrix;
-        gl_Position = mvp_mat * vec4(vertex, 1.0f);
-        texCoordFrag = texCoordVertex;
-    })shaderSource");
-
+    overlay_data_shader.addShaderFromSourceCode(QOpenGLShader::Vertex, vertex_shader_code);
     overlay_data_shader.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
     //#version 110
 
@@ -287,8 +272,8 @@ void widget::paintGL() {
     const float height = 1.0f * this->height();
     std::vector<std::array<GLfloat, 3>> triangleVertices;
     std::vector<std::array<GLfloat, 3>> textureVertices;
-    for (float y = 0; y < supercubeedge; ++y)
-    for (float x = 0; x < supercubeedge; ++x) {
+    for (float y = 0.0f; y < supercubeedge; ++y)
+    for (float x = 0.0f; x < supercubeedge; ++x) {
         auto startx = x * (width / supercubeedge);
         auto starty = y * (height / supercubeedge);
         auto endx = startx + width / supercubeedge;
