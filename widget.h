@@ -12,6 +12,15 @@
 #include <QVBoxLayout>
 
 #include <boost/multi_array.hpp>
+#include <cstdint>
+#include <list>
+
+struct TextureLayer {
+    boost::multi_array<QOpenGLTexture*, 2> textures;
+    float opacity = 1.0f;
+    bool enabled = true;
+    bool isOverlayData = false;
+};
 
 class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     virtual void initializeGL() override final;
@@ -21,21 +30,26 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     virtual void resizeGL(int, int) override final;
     virtual void wheelEvent(QWheelEvent * const) override final;
 
-    boost::multi_array<QOpenGLTexture*, 2> textures;
     std::unique_ptr<QOpenGLTexture> lut;
+    std::list<TextureLayer> layers;
+
     QTimer continuousRefresh;
     std::mt19937_64 twister;
     std::uniform_real_distribution<> dist;
     std::vector<char> data;
+    std::vector<std::uint16_t> overlay_data;
     int frame = 0;
+
     const int supercubeedge = 14;
     const int cpucubeedge = 128;
     const int gpucubeedge = 64;
+
     QPoint mouseDown;
     QVector3D deviation;
 
     QOpenGLDebugLogger ogllogger;
-    QOpenGLShaderProgram program;
+    QOpenGLShaderProgram raw_data_shader;
+    QOpenGLShaderProgram overlay_data_shader;
 public:
     widget();
     ~widget();

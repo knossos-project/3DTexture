@@ -26,8 +26,10 @@ widget::widget() : twister(std::random_device{}()), dist(0.0, 1.0) {
 
 widget::~widget() {
     makeCurrent();
-    for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
-        delete texture;
+    for(auto & layer : layers) {
+        for (auto & texture : boost::make_iterator_range(layer.textures.data(), layer.textures.data() + layer.textures.num_elements())) {
+            delete texture;
+        }
     }
 }
 
@@ -48,8 +50,16 @@ void widget::initializeGL() {
     std::cout << "MultiTexture: " << iUnits << ' ' << texture_units << ' ' << max_tu << std::endl;
 
     glEnable(GL_TEXTURE_3D);
-    glEnable(GL_DEPTH_TEST);
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    // glEnable(GL_DEPTH_TEST);
+    // glDepthFunc(GL_LEQUAL);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // ------- load raw data -------
+    layers.emplace_back();
+    layers.back().opacity = 1.0f;
+    auto& textures = layers.back().textures;
 
     lut.reset(new QOpenGLTexture(QOpenGLTexture::Target1D));
     QOpenGLTexture & texture = *lut;
@@ -69,7 +79,7 @@ void widget::initializeGL() {
     for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         delete texture;
     }
-    textures.resize(dims);
+    textures.resize(boost::extents[supercubeedge][supercubeedge]);
     for (auto & texture : boost::make_iterator_range(textures.data(), textures.data() + textures.num_elements())) {
         texture = nullptr;
     }
@@ -128,8 +138,39 @@ void widget::initializeGL() {
         lut->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt32_RGBA8_Rev, colors.data());
     }
 
-    program.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
-    #version 110
+    // ------- load overlay data -------
+    layers.emplace_back();
+    layers.back().opacity = 0.5f;
+    layers.back().isOverlayData = true;
+    auto& otextures = layers.back().textures;
+
+    for (auto & texture : boost::make_iterator_range(otextures.data(), otextures.data() + otextures.num_elements())) {
+        delete texture;
+    }
+    otextures.resize(boost::extents[supercubeedge][supercubeedge]);
+    for (auto & texture : boost::make_iterator_range(otextures.data(), otextures.data() + otextures.num_elements())) {
+        texture = nullptr;
+    }
+
+    for (int sy = 0; sy < supercubeedge; ++sy)
+    for (int sx = 0; sx < supercubeedge; ++sx) {
+        overlay_data.resize(std::pow(cpucubeedge, 3));
+        std::fill(std::begin(overlay_data), std::end(overlay_data), 1338);
+
+        otextures[sy][sx] = new QOpenGLTexture(QOpenGLTexture::Target3D);
+        QOpenGLTexture & otexture = *otextures[sy][sx];
+        otexture.setAutoMipMapGenerationEnabled(false);
+        otexture.setSize(cpucubeedge, cpucubeedge, cpucubeedge);
+        otexture.setMipLevels(1);
+        otexture.setMinificationFilter(QOpenGLTexture::Linear);
+        otexture.setMagnificationFilter(QOpenGLTexture::Linear);
+        otexture.setFormat(QOpenGLTexture::R16_UNorm);
+        otexture.allocateStorage();
+        otexture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt16, overlay_data.data());
+    }
+
+    raw_data_shader.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
+    //#version 110
     uniform mat4 model_matrix;
     uniform mat4 view_matrix;
     uniform mat4 projection_matrix;
@@ -144,9 +185,9 @@ void widget::initializeGL() {
         texCoordFrag = texCoordVertex;
     })shaderSource");
 
-    program.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
-    #version 110
-    //#extension GL_EXT_gpu_shader4 : enable
+    raw_data_shader.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
+    //#version 110
+    uniform float texture_opacity;
     uniform sampler3D textureCentral;
     uniform sampler3D textureLeft;
     uniform sampler3D textureRight;
@@ -157,14 +198,14 @@ void widget::initializeGL() {
     varying vec3 texCoordFrag;//in
     //varying vec4 gl_FragColor;//out
     void main() {
-//        gl_FragColor = vec4(texCoordFrag, 1.0);
-//        gl_FragColor = vec4(vec3(texture3D(textureCentral, texCoordFrag).r), 1.0);
+//        gl_FragColor = vec4(texCoordFrag, texture_opacity);
+//        gl_FragColor = vec4(vec3(texture3D(textureCentral, texCoordFrag).r), texture_opacity);
         float index = texture3D(textureCentral, texCoordFrag).r;
         float size = 1024.0;//float(textureSize1D(textureLUT, 0));
         index *= 256.0;//expand float to uint8 range
         gl_FragColor = texture1D(textureLUT, (index + 0.5) / size);
+        gl_FragColor.a = texture_opacity;
         //gl_FragColor = texelFetch(textureLUT, int(index), 0);//requires version 130
-
 //        vec4 left = texCoordFrag.x == 0.0f ? texture3D(textureLeft, vec3(cubeedgelength, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 right = texCoordFrag.x == cubeedgelength ? texture3D(textureRight, vec3(0, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 top = texCoordFrag.y == 0.0f ? texture3D(textureTop, vec3(texCoordFrag.x, cubeedgelength, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
@@ -176,13 +217,46 @@ void widget::initializeGL() {
 //        gl_FragColor = mix(bottom, center, 0.5);
     })shaderSource");
 
-    program.link();
-    program.bind();
+    raw_data_shader.link();
+    raw_data_shader.bind();
+
+    overlay_data_shader.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
+    //#version 110
+
+    uniform mat4 model_matrix;
+    uniform mat4 view_matrix;
+    uniform mat4 projection_matrix;
+    attribute vec3 vertex;
+    attribute vec3 texCoordVertex;
+    varying vec3 texCoordFrag;
+
+    void main() {
+        mat4 mvp_mat = projection_matrix * view_matrix * model_matrix;
+        gl_Position = mvp_mat * vec4(vertex, 1.0f);
+        texCoordFrag = texCoordVertex;
+    })shaderSource");
+
+    overlay_data_shader.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
+    //#version 110
+
+    uniform float texture_opacity;
+    uniform sampler3D textureCentral;
+    varying vec3 texCoordFrag;//in
+
+    void main() {
+        if(texture3D(textureCentral, texCoordFrag).r == 1337.0f / 65535.0f)
+            gl_FragColor = vec4(1.0f, 0.0f, 0.0, texture_opacity);
+        else
+            gl_FragColor = vec4(0.0f);
+    })shaderSource");
+
+    overlay_data_shader.link();
+    overlay_data_shader.bind();
 }
 
 void widget::mouseMoveEvent(QMouseEvent *event) {
     auto test = mouseDown - event->pos();
-    deviation += QVector3D(test.x(), test.y(), 0);
+    deviation += QVector3D(test.x(), test.y(), 0.0f);
     const float cubeedgef = gpucubeedge;
     deviation = {std::fmod(deviation.x(), cubeedgef), std::fmod(deviation.y(), cubeedgef), std::fmod(deviation.z(), cubeedgef)};
     mouseDown = event->pos();
@@ -221,10 +295,10 @@ void widget::paintGL() {
         auto starttexR = (0.5f + frame + deviation.z()) / cubeedgef;
         auto endtexR = (0.5f + frame + deviation.z()) / cubeedgef;
 
-        triangleVertices.push_back({{startx, starty, 0}});
-        triangleVertices.push_back({{startx, endy, 0}});
-        triangleVertices.push_back({{endx, endy, 0}});
-        triangleVertices.push_back({{endx, starty, 0}});
+        triangleVertices.push_back({{startx, starty, 0.0f}});
+        triangleVertices.push_back({{startx, endy, 0.0f}});
+        triangleVertices.push_back({{endx, endy, 0.0f}});
+        triangleVertices.push_back({{endx, starty, 0.0f}});
 
         textureVertices.push_back({{0.0f, 1.0f, starttexR}});
         textureVertices.push_back({{0.0f, 0.0f, starttexR}});
@@ -235,36 +309,65 @@ void widget::paintGL() {
     QMatrix4x4 modelMatrix; //identity
     QMatrix4x4 viewMatrix; //identity
     QMatrix4x4 projectionMatrix;
-    projectionMatrix.ortho(0, width, 0, height, -1, 1);
-    viewMatrix.translate(deviation / QVector3D{-1.0f, 1.0f, 1});
+    projectionMatrix.ortho(0.0f, width, 0.0f, height, -1.0f, 1.0f);
+    viewMatrix.translate(deviation / QVector3D{-1.0f, 1.0f, 1.0f});
 
-    int vertexLocation = program.attributeLocation("vertex");
-    int texLocation = program.attributeLocation("texCoordVertex");
-    program.enableAttributeArray(vertexLocation);
-    program.enableAttributeArray(texLocation);
-    program.setAttributeArray(vertexLocation, triangleVertices.data()->data(), 3);
-    program.setAttributeArray(texLocation, textureVertices.data()->data(), 3);
-    program.setUniformValue("model_matrix", modelMatrix);
-    program.setUniformValue("view_matrix", viewMatrix);
-    program.setUniformValue("projection_matrix", projectionMatrix);
-    program.setUniformValue("textureCentral", 0);
-    program.setUniformValue("textureLeft", 1);
-    program.setUniformValue("textureRight", 2);
-    program.setUniformValue("textureTop", 3);
-    program.setUniformValue("textureBottom", 4);
-    program.setUniformValue("textureLUT", 5);
+    // raw data shader
+    raw_data_shader.bind();
+    int vertexLocation = raw_data_shader.attributeLocation("vertex");
+    int texLocation = raw_data_shader.attributeLocation("texCoordVertex");
+    raw_data_shader.enableAttributeArray(vertexLocation);
+    raw_data_shader.enableAttributeArray(texLocation);
+    raw_data_shader.setAttributeArray(vertexLocation, triangleVertices.data()->data(), 3);
+    raw_data_shader.setAttributeArray(texLocation, textureVertices.data()->data(), 3);
+    raw_data_shader.setUniformValue("model_matrix", modelMatrix);
+    raw_data_shader.setUniformValue("view_matrix", viewMatrix);
+    raw_data_shader.setUniformValue("projection_matrix", projectionMatrix);
+    raw_data_shader.setUniformValue("textureCentral", 0);
+    raw_data_shader.setUniformValue("textureLeft", 1);
+    raw_data_shader.setUniformValue("textureRight", 2);
+    raw_data_shader.setUniformValue("textureTop", 3);
+    raw_data_shader.setUniformValue("textureBottom", 4);
+    raw_data_shader.setUniformValue("textureLUT", 5);
     const float cubeedgef = gpucubeedge;
-    program.setUniformValue("cubeedgelength", cubeedgef);
+    raw_data_shader.setUniformValue("cubeedgelength", cubeedgef);
 
-    for (float y = 0; y < supercubeedge; ++y)
-    for (float x = 0; x < supercubeedge; ++x) {
-        textures[y][x]->bind(0);
-        lut->bind(5);
-        glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
+    // overlay data shader
+    overlay_data_shader.bind();
+    int overtexLocation = overlay_data_shader.attributeLocation("vertex");
+    int otexLocation = overlay_data_shader.attributeLocation("texCoordVertex");
+    overlay_data_shader.enableAttributeArray(overtexLocation);
+    overlay_data_shader.enableAttributeArray(otexLocation);
+    overlay_data_shader.setAttributeArray(overtexLocation, triangleVertices.data()->data(), 3);
+    overlay_data_shader.setAttributeArray(otexLocation, textureVertices.data()->data(), 3);
+    overlay_data_shader.setUniformValue("model_matrix", modelMatrix);
+    overlay_data_shader.setUniformValue("view_matrix", viewMatrix);
+    overlay_data_shader.setUniformValue("projection_matrix", projectionMatrix);
+    overlay_data_shader.setUniformValue("textureCentral", 0);
+
+    for(const auto& layer : layers) {
+        if(layer.enabled && layer.opacity >= 0.0f) {
+            if(layer.isOverlayData) {
+                overlay_data_shader.bind();
+                overlay_data_shader.setUniformValue("texture_opacity", layer.opacity);
+            } else {
+                raw_data_shader.bind();
+                raw_data_shader.setUniformValue("texture_opacity", layer.opacity);
+            }
+
+            for (float y = 0; y < supercubeedge; ++y)
+            for (float x = 0; x < supercubeedge; ++x) {
+                layer.textures[y][x]->bind(0);
+                lut->bind(5);
+                glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
+            }
+        }
     }
 
-    program.disableAttributeArray(vertexLocation);
-    program.disableAttributeArray(texLocation);
+    raw_data_shader.disableAttributeArray(vertexLocation);
+    raw_data_shader.disableAttributeArray(texLocation);
+    overlay_data_shader.disableAttributeArray(overtexLocation);
+    overlay_data_shader.disableAttributeArray(otexLocation);
     times.recordSample();
 
     qDebug() << "render time: " << times.waitForIntervals();
