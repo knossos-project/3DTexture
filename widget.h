@@ -34,10 +34,6 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     std::list<TextureLayer> layers;
 
     QTimer continuousRefresh;
-    std::mt19937_64 twister;
-    std::uniform_real_distribution<> dist;
-    std::vector<char> data;
-    std::vector<std::uint16_t> overlay_data;
     float frame = 0;
 
     const int supercubeedge = 14;

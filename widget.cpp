@@ -16,7 +16,7 @@
 #include <sstream>
 #include <vector>
 
-widget::widget() : twister(std::random_device{}()), dist(0.0, 1.0) {
+widget::widget() {
     //qDebug() << context()->format().swapBehavior() << ' ' << context()->format().swapInterval();
 
     QObject::connect(&continuousRefresh, &QTimer::timeout, this, static_cast<void (QOpenGLWidget::*)()>(&QOpenGLWidget::update));
@@ -84,6 +84,7 @@ void widget::initializeGL() {
         texture = nullptr;
     }
 
+    std::vector<char> data;
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
         QElapsedTimer time;
@@ -152,6 +153,7 @@ void widget::initializeGL() {
         texture = nullptr;
     }
 
+    std::vector<std::uint16_t> overlay_data;
     for (int sy = 0; sy < supercubeedge; ++sy)
     for (int sx = 0; sx < supercubeedge; ++sx) {
         overlay_data.resize(std::pow(cpucubeedge, 3));
