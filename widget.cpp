@@ -51,14 +51,14 @@ void widget::initializeGL() {
     glEnable(GL_DEPTH_TEST);
     glClearColor(1.0, 1.0, 1.0, 1.0);
 
-    lut.reset(new QOpenGLTexture(QOpenGLTexture::Target2D));
+    lut.reset(new QOpenGLTexture(QOpenGLTexture::Target1D));
     QOpenGLTexture & texture = *lut;
     texture.setAutoMipMapGenerationEnabled(false);
-    texture.setSize(1024, 1024);
+    texture.setSize(1024);
     texture.setMipLevels(1);
     texture.setMinificationFilter(QOpenGLTexture::Nearest);
     texture.setMagnificationFilter(QOpenGLTexture::Nearest);
-    texture.setFormat(QOpenGLTexture::RGBA32U);
+    texture.setFormat(QOpenGLTexture::RGBA8_UNorm);
     texture.allocateStorage();
 
     QHash<quint64, quint32> gpuIds;
@@ -121,14 +121,14 @@ void widget::initializeGL() {
                 colors.push_back({id, id, id, 255});
             }
         }
-        colors.resize(lut->width() * lut->height());
+        colors.resize(lut->width() * lut->height() * lut->depth());
 
         texture.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data2.data());
-        lut->setData(QOpenGLTexture::RGBA_Integer, QOpenGLTexture::UInt32_RGBA8, colors.data());
+        lut->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt32_RGBA8_Rev, colors.data());
     }
 
     program.addShaderFromSourceCode(QOpenGLShader::Vertex, R"shaderSource(
-    //#version 110
+    #version 110
     uniform mat4 model_matrix;
     uniform mat4 view_matrix;
     uniform mat4 projection_matrix;
@@ -144,22 +144,24 @@ void widget::initializeGL() {
     })shaderSource");
 
     program.addShaderFromSourceCode(QOpenGLShader::Fragment, R"shaderSource(
-    //#version 110
+    #version 110
+    #extension GL_EXT_gpu_shader4 : enable
     uniform sampler3D textureCentral;
     uniform sampler3D textureLeft;
     uniform sampler3D textureRight;
     uniform sampler3D textureTop;
     uniform sampler3D textureBottom;
-    uniform sampler2D textureLUT;
+    uniform sampler1D textureLUT;
     uniform float cubeedgelength;
     varying vec3 texCoordFrag;//in
     //varying vec4 gl_FragColor;//out
     void main() {
-//        gl_FragColor = vec4(texCoordFrag, 1);
-        gl_FragColor = vec4(vec3(texture3D(textureCentral, texCoordFrag).r), 1.0f);
+//        gl_FragColor = vec4(texCoordFrag, 1.0);
+//        gl_FragColor = vec4(vec3(texture3D(textureCentral, texCoordFrag).r), 1.0);
         float index = texture3D(textureCentral, texCoordFrag).r;
-        //float size = textureSize(textureLUT).x;
-        //gl_FragColor = texture2D(textureLUT, ivec2((index + 0.5) / size, 0.5));
+        float size = float(textureSize1D(textureLUT, 0));
+        index *= 256.0;//expand float to uint8 range
+        gl_FragColor = texture1D(textureLUT, (index + 0.5) / size);
 //        vec4 left = texCoordFrag.x == 0.0f ? texture3D(textureLeft, vec3(cubeedgelength, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 right = texCoordFrag.x == cubeedgelength ? texture3D(textureRight, vec3(0, texCoordFrag.yz)) : texture3D(textureCentral, texCoordFrag);
 //        vec4 top = texCoordFrag.y == 0.0f ? texture3D(textureTop, vec3(texCoordFrag.x, cubeedgelength, texCoordFrag.z)) : texture3D(textureCentral, texCoordFrag);
@@ -253,10 +255,8 @@ void widget::paintGL() {
 
     for (float y = 0; y < supercubeedge; ++y)
     for (float x = 0; x < supercubeedge; ++x) {
-        glActiveTexture(GL_TEXTURE0);
-        textures[y][x]->bind();
-        glActiveTexture(GL_TEXTURE1);
-        lut->bind();
+        textures[y][x]->bind(0);
+        lut->bind(5);
         glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
     }
 
