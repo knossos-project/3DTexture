@@ -53,7 +53,9 @@ public:
 };
 
 class gpu_lut_cube : public gpu_raw_cube {
-    using gpu_index = quint32;
+public:
+    using gpu_index = quint16;
+private:
     QHash<quint64, gpu_index> id_to_lut_index;
     gpu_index highest_index = 0;
     std::vector<std::array<uint8_t, 4>> colors;
@@ -62,12 +64,10 @@ public:
 
     gpu_lut_cube(const int gpucubeedge) : gpu_raw_cube(gpucubeedge, true) {
         lut.setAutoMipMapGenerationEnabled(false);
-        lut.setSize(1024);
         lut.setMipLevels(1);
         lut.setMinificationFilter(QOpenGLTexture::Nearest);
         lut.setMagnificationFilter(QOpenGLTexture::Nearest);
         lut.setFormat(QOpenGLTexture::RGBA8_UNorm);
-        lut.allocateStorage();
     }
 
     void generate(boost::multi_array_ref<std::uint64_t, 3>::const_array_view<3>::type view) {
@@ -94,7 +94,10 @@ public:
                 }
             }
         }
-        colors.resize(lut.width() * lut.height() * lut.depth());
+        const auto lutSize = std::pow(2, std::ceil(std::log2(colors.size())));
+        colors.resize(lutSize);
+        lut.setSize(lutSize);
+        lut.allocateStorage();
 
         cube.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt16, data.data());
         lut.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt32_RGBA8_Rev, colors.data());

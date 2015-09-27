@@ -240,7 +240,7 @@ void widget::paintGL() {
     overlay_data_shader.setUniformValue("projection_matrix", projectionMatrix);
     overlay_data_shader.setUniformValue("indexTexture", 0);
     overlay_data_shader.setUniformValue("textureLUT", 1);
-    overlay_data_shader.setUniformValue("factor", static_cast<float>(std::numeric_limits<std::uint16_t>::max()));
+    overlay_data_shader.setUniformValue("factor", static_cast<float>(std::numeric_limits<gpu_lut_cube::gpu_index>::max()));
 
     for (auto & layer : layers) {
         if (layer.enabled && layer.opacity >= 0.0f) {
