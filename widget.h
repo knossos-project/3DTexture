@@ -30,13 +30,13 @@ class gpu_raw_cube {
 public:
     QOpenGLTexture cube{QOpenGLTexture::Target3D};
 
-    gpu_raw_cube(int gpucubeedge) {
+    gpu_raw_cube(const int gpucubeedge, const bool index = false) {
         cube.setAutoMipMapGenerationEnabled(false);
         cube.setSize(gpucubeedge, gpucubeedge, gpucubeedge);
         cube.setMipLevels(1);
-        cube.setMinificationFilter(QOpenGLTexture::Linear);
-        cube.setMagnificationFilter(QOpenGLTexture::Linear);
-        cube.setFormat(QOpenGLTexture::R8_UNorm);
+        cube.setMinificationFilter(index ? QOpenGLTexture::Nearest : QOpenGLTexture::Linear);
+        cube.setMagnificationFilter(index ? QOpenGLTexture::Nearest : QOpenGLTexture::Linear);
+        cube.setFormat(index ? QOpenGLTexture::R16_UNorm : QOpenGLTexture::R8_UNorm);
         cube.setWrapMode(QOpenGLTexture::ClampToEdge);
         cube.allocateStorage();
     }
@@ -60,7 +60,7 @@ class gpu_lut_cube : public gpu_raw_cube {
 public:
     QOpenGLTexture lut{QOpenGLTexture::Target1D};
 
-    gpu_lut_cube(int gpucubeedge) : gpu_raw_cube(gpucubeedge) {
+    gpu_lut_cube(const int gpucubeedge) : gpu_raw_cube(gpucubeedge, true) {
         lut.setAutoMipMapGenerationEnabled(false);
         lut.setSize(1024);
         lut.setMipLevels(1);
@@ -71,7 +71,7 @@ public:
     }
 
     void generate(boost::multi_array_ref<std::uint64_t, 3>::const_array_view<3>::type view) {
-        std::vector<char> data;
+        std::vector<std::uint16_t> data;
         for (const auto & d2 : view)
         for (const auto & d1 : d2)
         for (const auto & elem : d1) {
@@ -96,7 +96,7 @@ public:
         }
         colors.resize(lut.width() * lut.height() * lut.depth());
 
-        cube.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt8, data.data());
+        cube.setData(QOpenGLTexture::Red, QOpenGLTexture::UInt16, data.data());
         lut.setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt32_RGBA8_Rev, colors.data());
     }
 };

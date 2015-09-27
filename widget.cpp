@@ -142,12 +142,13 @@ void widget::initializeGL() {
     uniform float textureOpacity;
     uniform sampler3D indexTexture;
     uniform sampler1D textureLUT;
+    uniform float lutSize;//float(textureSize1D(textureLUT, 0));
+    uniform float factor;//expand float to uint8 range
     varying vec3 texCoordFrag;//in
     void main() {
         float index = texture3D(indexTexture, texCoordFrag).r;
-        float size = 1024.0;//float(textureSize1D(textureLUT, 0));
-        index *= 256.0;//expand float to uint8 range
-        gl_FragColor = texture1D(textureLUT, (index + 0.5) / size);
+        index *= factor;
+        gl_FragColor = texture1D(textureLUT, (index + 0.5) / lutSize);
         gl_FragColor.a = textureOpacity;
     })shaderSource");
 
@@ -239,6 +240,7 @@ void widget::paintGL() {
     overlay_data_shader.setUniformValue("projection_matrix", projectionMatrix);
     overlay_data_shader.setUniformValue("indexTexture", 0);
     overlay_data_shader.setUniformValue("textureLUT", 1);
+    overlay_data_shader.setUniformValue("factor", static_cast<float>(std::numeric_limits<std::uint16_t>::max()));
 
     for (auto & layer : layers) {
         if (layer.enabled && layer.opacity >= 0.0f) {
@@ -255,8 +257,10 @@ void widget::paintGL() {
             for (float x = 0; x < supercubeedge; ++x) {
                 auto ptr = layer.textures[QVector3D(x, y, z)].get();
                 if (layer.isOverlayData) {
-                    static_cast<gpu_lut_cube*>(ptr)->cube.bind(0);;
-                    static_cast<gpu_lut_cube*>(ptr)->lut.bind(1);
+                    auto * punned = static_cast<gpu_lut_cube*>(ptr);
+                    punned->cube.bind(0);
+                    punned->lut.bind(1);
+                    overlay_data_shader.setUniformValue("lutSize", static_cast<float>(punned->lut.width() * punned->lut.height() * punned->lut.depth()));
                 } else {
                     ptr->cube.bind(0);;
                 }
