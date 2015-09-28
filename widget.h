@@ -106,6 +106,7 @@ public:
 
 struct TextureLayer {
     std::unordered_map<QVector3D, std::unique_ptr<gpu_raw_cube>> textures;
+    std::unique_ptr<gpu_raw_cube> bogusCube;
     float opacity = 1.0f;
     bool enabled = true;
     bool isOverlayData = false;

@@ -47,15 +47,24 @@ void widget::initializeGL() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
+    std::vector<char> data;
     // ------- load raw data -------
     layers.emplace_back();
     layers.back().opacity = 1.0f;
 
-    std::vector<char> data;
+    {
+        data.resize(std::pow(cpucubeedge, 3));
+        std::fill(std::begin(data), std::end(data), 0);
+        layers.back().bogusCube.reset(new gpu_raw_cube(gpucubeedge));
+        boost::multi_array_ref<std::uint8_t, 3> cube(reinterpret_cast<std::uint8_t*>(data.data()), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
+        using range = boost::multi_array_types::index_range;
+        layers.back().bogusCube->generate(cube[boost::indices[range(0,gpucubeedge)][range(cpucubeedge-gpucubeedge,cpucubeedge-0)][range(0,gpucubeedge)]]);
+    }
+
+    const auto factor = cpucubeedge / gpucubeedge;
     int z = 0;
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
-        const auto factor = cpucubeedge / gpucubeedge;
         std::string path = "cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x/factor) + "_y00" + std::to_string(52-y/factor) + "_z0023.raw";
 //        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
 //        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
@@ -65,8 +74,8 @@ void widget::initializeGL() {
         if (file) {
             file.read(data.data(), data.size());
         } else {
-            std::fill(std::begin(data), std::end(data), 127);
             std::cout << path << " failed" << std::endl;
+            continue;
         }
 
         layers.back().textures[QVector3D(x, y, z)].reset(new gpu_raw_cube(gpucubeedge));
@@ -85,6 +94,15 @@ void widget::initializeGL() {
     layers.back().opacity = 0.5f;
     layers.back().isOverlayData = true;
 
+    {
+        data.resize(std::pow(cpucubeedge, 3) * 8);
+        std::fill(std::begin(data), std::end(data), 0);
+        layers.back().bogusCube.reset(new gpu_lut_cube(gpucubeedge));
+        boost::multi_array_ref<std::uint64_t, 3> cube(reinterpret_cast<std::uint64_t*>(data.data()), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
+        using range = boost::multi_array_types::index_range;
+        static_cast<gpu_lut_cube*>(layers.back().bogusCube.get())->generate(cube[boost::indices[range(0,gpucubeedge)][range(cpucubeedge-gpucubeedge,cpucubeedge-0)][range(0,gpucubeedge)]]);
+    }
+
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
         const auto factor = cpucubeedge / gpucubeedge;
@@ -94,8 +112,8 @@ void widget::initializeGL() {
         if (file) {
             file.read(data.data(), data.size());
         } else {
-            std::fill(std::begin(data), std::end(data), 127);
             std::cout << path << " failed" << std::endl;
+            continue;
         }
 
         layers.back().textures[QVector3D(x, y, z)].reset(new gpu_lut_cube(gpucubeedge));
@@ -255,14 +273,16 @@ void widget::paintGL() {
             float z = 0;
             for (float y = 0; y < supercubeedge; ++y)
             for (float x = 0; x < supercubeedge; ++x) {
-                auto ptr = layer.textures[QVector3D(x, y, z)].get();
+                auto pos = QVector3D(x, y, z);
+                auto it = layer.textures.find(pos);
+                auto & ptr = it != std::end(layer.textures) ? *it->second : *layer.bogusCube;
                 if (layer.isOverlayData) {
-                    auto * punned = static_cast<gpu_lut_cube*>(ptr);
-                    punned->cube.bind(0);
-                    punned->lut.bind(1);
-                    overlay_data_shader.setUniformValue("lutSize", static_cast<float>(punned->lut.width() * punned->lut.height() * punned->lut.depth()));
+                    auto & punned = static_cast<gpu_lut_cube&>(ptr);
+                    punned.cube.bind(0);
+                    punned.lut.bind(1);
+                    overlay_data_shader.setUniformValue("lutSize", static_cast<float>(punned.lut.width() * punned.lut.height() * punned.lut.depth()));
                 } else {
-                    ptr->cube.bind(0);;
+                    ptr.cube.bind(0);;
                 }
                 glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
             }
