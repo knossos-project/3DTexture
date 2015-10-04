@@ -65,9 +65,9 @@ void widget::initializeGL() {
     const QString basePath("D:/New folder/cubes/2012-03-07_AreaX14_mag1_x%1_y%2_z%3.raw");
     offset = {29, 46, 23};
     int z = 0;
-    for (int y = 0; y < supercubeedge; ++y)
-    for (int x = 0; x < supercubeedge; ++x) {
-		const int cubex = offset.x() + x / factor;
+    for (int y = 0; y < supercubeedge; y += factor)
+    for (int x = 0; x < supercubeedge; x += factor) {
+        const int cubex = offset.x() + x / factor;
         const int cubey = offset.y() + y / factor;
         const int cubez = offset.z() + z / factor;
         std::string path = basePath.arg(cubex, 4, 10, QLatin1Char('0')).arg(cubey, 4, 10, QLatin1Char('0')).arg(cubez, 4, 10, QLatin1Char('0')).toStdString();
@@ -81,15 +81,18 @@ void widget::initializeGL() {
             continue;
         }
 
-        layers.back().textures[QVector3D(x, y, z)].reset(new gpu_raw_cube(gpucubeedge));
-        //boost::multi_array_ref<std::uint64_t, 3> cube(reinterpret_cast<std::uint64_t*>(data.data()), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
         boost::multi_array_ref<std::uint8_t, 3> cube(reinterpret_cast<std::uint8_t*>(data.data()), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
-        const auto x_offset = gpucubeedge * (x % factor);
-        const auto y_offset = gpucubeedge * (y % factor);
-        const auto z_offset = 0;
-        using range = boost::multi_array_types::index_range;
-        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(0+y_offset,gpucubeedge+y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
-        static_cast<gpu_raw_cube*>(layers.back().textures[QVector3D(x, y, z)].get())->generate(view);
+        for (int zi = z; zi < z + factor; ++zi)
+        for (int yi = y; yi < y + factor; ++yi)
+        for (int xi = x; xi < x + factor; ++xi) {
+            const auto x_offset = gpucubeedge * (xi % factor);
+            const auto y_offset = gpucubeedge * (yi % factor);
+            const auto z_offset = gpucubeedge * (zi % factor);
+            using range = boost::multi_array_types::index_range;
+            const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(0+y_offset,gpucubeedge+y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
+            layers.back().textures[QVector3D(xi, yi, zi)].reset(new gpu_raw_cube(gpucubeedge));
+            static_cast<gpu_raw_cube*>(layers.back().textures[QVector3D(xi, yi, zi)].get())->generate(view);
+        }
     }
 
     // ------- load overlay data -------
@@ -106,8 +109,8 @@ void widget::initializeGL() {
         static_cast<gpu_lut_cube*>(layers.back().bogusCube.get())->generate(cube[boost::indices[range(0,gpucubeedge)][range(cpucubeedge-gpucubeedge,cpucubeedge-0)][range(0,gpucubeedge)]]);
     }
 
-    for (int y = 0; y < supercubeedge; ++y)
-    for (int x = 0; x < supercubeedge; ++x) {
+    for (int y = 0; y < supercubeedge; y += factor)
+    for (int x = 0; x < supercubeedge; x += factor) {
         const int cubex = offset.x() + x / factor;
         const int cubey = offset.y() + y / factor;
         const int cubez = offset.z() + z / factor;
@@ -121,14 +124,18 @@ void widget::initializeGL() {
             continue;
         }
 
-        layers.back().textures[QVector3D(x, y, z)].reset(new gpu_lut_cube(gpucubeedge));
         boost::multi_array_ref<std::uint64_t, 3> cube(reinterpret_cast<std::uint64_t*>(data.data()), boost::extents[cpucubeedge][cpucubeedge][cpucubeedge]);
-        const auto x_offset = gpucubeedge * (x % factor);
-        const auto y_offset = gpucubeedge * (y % factor);
-        const auto z_offset = 0;
-        using range = boost::multi_array_types::index_range;
-        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(0+y_offset,gpucubeedge+y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
-        static_cast<gpu_lut_cube*>(layers.back().textures[QVector3D(x, y, z)].get())->generate(view);
+        for (int zi = z; zi < z + factor; ++zi)
+        for (int yi = y; yi < y + factor; ++yi)
+        for (int xi = x; xi < x + factor; ++xi) {
+            const auto x_offset = gpucubeedge * (xi % factor);
+            const auto y_offset = gpucubeedge * (yi % factor);
+            const auto z_offset = gpucubeedge * (zi % factor);
+            using range = boost::multi_array_types::index_range;
+            const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(0+y_offset,gpucubeedge+y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
+            layers.back().textures[QVector3D(xi, yi, zi)].reset(new gpu_lut_cube(gpucubeedge));
+            static_cast<gpu_lut_cube*>(layers.back().textures[QVector3D(xi, yi, zi)].get())->generate(view);
+        }
     }
 
     auto vertex_shader_code = R"shaderSource(
