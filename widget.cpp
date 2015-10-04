@@ -62,13 +62,16 @@ void widget::initializeGL() {
     }
 
     const auto factor = cpucubeedge / gpucubeedge;
+    const QString basePath("D:/New folder/cubes/2012-03-07_AreaX14_mag1_x%1_y%2_z%3.raw");
+    offset = {29, 46, 23};
     int z = 0;
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
-        std::string path = "cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x/factor) + "_y00" + std::to_string(52-y/factor) + "_z0023.raw";
-//        std::string path = "C:/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
-//        std::string path = "\\\\mobile/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x) + "_y00" + std::to_string(52-y) + "_z0023.raw";
-//        std::string path = QString("/run/user/1000/gvfs/sftp:host=soma06,user=npfeiler/lustre/sdorkenw/j0126_cubed_64/mag1/x00%1/y00%2/z0023/2012-03-07_AreaX14_mag1_x00%1_y00%2_z0023.raw").arg(29+x).arg(52-y).toStdString();
+		const int cubex = offset.x() + x / factor;
+        const int cubey = offset.y() + y / factor;
+        const int cubez = offset.z() + z / factor;
+        std::string path = basePath.arg(cubex, 4, 10, QLatin1Char('0')).arg(cubey, 4, 10, QLatin1Char('0')).arg(cubez, 4, 10, QLatin1Char('0')).toStdString();
+
         std::ifstream file(path, std::ios_base::binary);
         data.resize(std::pow(cpucubeedge, 3));
         if (file) {
@@ -85,7 +88,7 @@ void widget::initializeGL() {
         const auto y_offset = gpucubeedge * (y % factor);
         const auto z_offset = 0;
         using range = boost::multi_array_types::index_range;
-        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(cpucubeedge-gpucubeedge-y_offset,cpucubeedge-0-y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
+        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(0+y_offset,gpucubeedge+y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
         static_cast<gpu_raw_cube*>(layers.back().textures[QVector3D(x, y, z)].get())->generate(view);
     }
 
@@ -105,8 +108,10 @@ void widget::initializeGL() {
 
     for (int y = 0; y < supercubeedge; ++y)
     for (int x = 0; x < supercubeedge; ++x) {
-        const auto factor = cpucubeedge / gpucubeedge;
-        std::string path = "/run/media/mobile/00AAEB91AAEB8210/New folder/cubes/2012-03-07_AreaX14_mag1_x00" + std::to_string(29+x/factor) + "_y00" + std::to_string(52-(y/factor)) + "_z0023.raw.segmentation.raw";
+        const int cubex = offset.x() + x / factor;
+        const int cubey = offset.y() + y / factor;
+        const int cubez = offset.z() + z / factor;
+        std::string path = basePath.arg(cubex, 4, 10, QLatin1Char('0')).arg(cubey, 4, 10, QLatin1Char('0')).arg(cubez, 4, 10, QLatin1Char('0')).toStdString() + ".segmentation.raw";
         std::ifstream file(path, std::ios_base::binary);
         data.resize(std::pow(cpucubeedge, 3)*8);
         if (file) {
@@ -122,7 +127,7 @@ void widget::initializeGL() {
         const auto y_offset = gpucubeedge * (y % factor);
         const auto z_offset = 0;
         using range = boost::multi_array_types::index_range;
-        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(cpucubeedge-gpucubeedge-y_offset,cpucubeedge-0-y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
+        const auto view = cube[boost::indices[range(0+z_offset,gpucubeedge+z_offset)][range(0+y_offset,gpucubeedge+y_offset)][range(0+x_offset,gpucubeedge+x_offset)]];
         static_cast<gpu_lut_cube*>(layers.back().textures[QVector3D(x, y, z)].get())->generate(view);
     }
 
@@ -176,7 +181,7 @@ void widget::initializeGL() {
 
 void widget::mouseMoveEvent(QMouseEvent *event) {
     auto test = mouseDown - event->pos();
-    deviation += QVector3D(test.x(), test.y(), 0.0f);
+    deviation += QVector3D(test.x(), -test.y(), 0.0f);//origin top left
     const float cubeedgef = gpucubeedge;
     deviation = {std::fmod(deviation.x(), cubeedgef), std::fmod(deviation.y(), cubeedgef), std::fmod(deviation.z(), cubeedgef)};
     mouseDown = event->pos();
@@ -211,14 +216,17 @@ void widget::paintGL() {
         auto starty = y * (height / supercubeedge);
         auto endx = startx + width / supercubeedge;
         auto endy = starty + height / supercubeedge;
-        const float cubeedgef = gpucubeedge;
-        auto starttexR = (0.5f + frame + deviation.z()) / cubeedgef;
-        auto endtexR = (0.5f + frame + deviation.z()) / cubeedgef;
+
+        std::swap(starty, endy);//origin top left
 
         triangleVertices.push_back({{startx, starty, 0.0f}});
         triangleVertices.push_back({{startx, endy, 0.0f}});
         triangleVertices.push_back({{endx, endy, 0.0f}});
         triangleVertices.push_back({{endx, starty, 0.0f}});
+
+        const float cubeedgef = gpucubeedge;
+        auto starttexR = (0.5f + frame + deviation.z()) / cubeedgef;
+        auto endtexR = (0.5f + frame + deviation.z()) / cubeedgef;
 
         textureVertices.push_back({{0.0f, 1.0f, starttexR}});
         textureVertices.push_back({{0.0f, 0.0f, starttexR}});
@@ -229,7 +237,7 @@ void widget::paintGL() {
     QMatrix4x4 modelMatrix; //identity
     QMatrix4x4 viewMatrix; //identity
     QMatrix4x4 projectionMatrix;
-    projectionMatrix.ortho(0.0f, width, 0.0f, height, -1.0f, 1.0f);
+    projectionMatrix.ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);//origin top left
     viewMatrix.translate(deviation / QVector3D{-1.0f, 1.0f, 1.0f});
 
     // raw data shader

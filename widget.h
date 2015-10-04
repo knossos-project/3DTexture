@@ -131,6 +131,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     const int gpucubeedge = 64;
 
     QPoint mouseDown;
+    QVector3D offset;
     QVector3D deviation;
 
     QOpenGLDebugLogger ogllogger;
