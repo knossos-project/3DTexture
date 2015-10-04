@@ -139,6 +139,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     QOpenGLShaderProgram overlay_data_shader;
 public:
     widget();
+    ~widget();
 };
 
 #endif//WIDGET_H

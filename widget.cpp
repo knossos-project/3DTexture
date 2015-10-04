@@ -350,3 +350,7 @@ void widget::wheelEvent(QWheelEvent * const event) {
 
     update();
 }
+
+widget::~widget() {
+    makeCurrent();//grab ctx so textures can safely free themselves
+}
