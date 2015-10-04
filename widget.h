@@ -120,7 +120,6 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions_2_0 {
     virtual void resizeGL(int, int) override final;
     virtual void wheelEvent(QWheelEvent * const) override final;
 
-    std::unique_ptr<QOpenGLTexture> lut;
     std::list<TextureLayer> layers;
 
     QTimer continuousRefresh;
