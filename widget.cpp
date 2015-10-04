@@ -64,7 +64,7 @@ void widget::initializeGL() {
     const auto factor = cpucubeedge / gpucubeedge;
     const QString basePath("D:/New folder/cubes/2012-03-07_AreaX14_mag1_x%1_y%2_z%3.raw");
     offset = {29, 46, 23};
-    int z = 0;
+    for (int z = 0; z < supercubeedge; z += factor)
     for (int y = 0; y < supercubeedge; y += factor)
     for (int x = 0; x < supercubeedge; x += factor) {
         const int cubex = offset.x() + x / factor;
@@ -109,6 +109,7 @@ void widget::initializeGL() {
         static_cast<gpu_lut_cube*>(layers.back().bogusCube.get())->generate(cube[boost::indices[range(0,gpucubeedge)][range(cpucubeedge-gpucubeedge,cpucubeedge-0)][range(0,gpucubeedge)]]);
     }
 
+    for (int z = 0; z < supercubeedge; z += factor)
     for (int y = 0; y < supercubeedge; y += factor)
     for (int x = 0; x < supercubeedge; x += factor) {
         const int cubex = offset.x() + x / factor;
@@ -213,14 +214,18 @@ void widget::paintGL() {
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    bool xy = true, xz = false, zy = false;
+
     const float width = 1.0f * this->width();
     const float height = 1.0f * this->height();
     std::vector<std::array<GLfloat, 3>> triangleVertices;
     std::vector<std::array<GLfloat, 3>> textureVertices;
-    for (float y = 0.0f; y < supercubeedge; ++y)
-    for (float x = 0.0f; x < supercubeedge; ++x) {
-        auto startx = x * (width / supercubeedge);
-        auto starty = y * (height / supercubeedge);
+    for (float z = 0.0f; z < (xy ? 1 : supercubeedge); ++z)
+    for (float y = 0.0f; y < (xz ? 1 : supercubeedge); ++y)
+    for (float x = 0.0f; x < (zy ? 1 : supercubeedge); ++x) {
+        auto zz = z + deviation.z();
+        auto startx = zy ? zz * (width / supercubeedge) : x * (width / supercubeedge);
+        auto starty = xz ? zz * (height / supercubeedge) : y * (height / supercubeedge);
         auto endx = startx + width / supercubeedge;
         auto endy = starty + height / supercubeedge;
 
@@ -235,10 +240,22 @@ void widget::paintGL() {
         auto starttexR = (0.5f + frame + deviation.z()) / cubeedgef;
         auto endtexR = (0.5f + frame + deviation.z()) / cubeedgef;
 
-        textureVertices.push_back({{0.0f, 1.0f, starttexR}});
-        textureVertices.push_back({{0.0f, 0.0f, starttexR}});
-        textureVertices.push_back({{1.0f, 0.0f, endtexR}});
-        textureVertices.push_back({{1.0f, 1.0f, endtexR}});
+        if (xy) {
+            textureVertices.push_back({{0.0f, 1.0f, starttexR}});
+            textureVertices.push_back({{0.0f, 0.0f, starttexR}});
+            textureVertices.push_back({{1.0f, 0.0f, endtexR}});
+            textureVertices.push_back({{1.0f, 1.0f, endtexR}});
+        } else if (xz) {
+            textureVertices.push_back({{0.0f, starttexR, 1.0f}});
+            textureVertices.push_back({{0.0f, starttexR, 0.0f}});
+            textureVertices.push_back({{1.0f, endtexR, 0.0f}});
+            textureVertices.push_back({{1.0f, endtexR, 1.0f}});
+        } else if (zy) {
+            textureVertices.push_back({{starttexR, 1.0f, 0.0f}});
+            textureVertices.push_back({{starttexR, 0.0f, 0.0f}});
+            textureVertices.push_back({{endtexR, 0.0f, 1.0f}});
+            textureVertices.push_back({{endtexR, 1.0f, 1.0f}});
+        }
     }
 
     QMatrix4x4 modelMatrix; //identity
@@ -285,9 +302,9 @@ void widget::paintGL() {
                 raw_data_shader.setUniformValue("textureOpacity", layer.opacity);
             }
 
-            float z = 0;
-            for (float y = 0; y < supercubeedge; ++y)
-            for (float x = 0; x < supercubeedge; ++x) {
+            for (float z = 0; z < (xy ? 1 : supercubeedge); ++z)
+            for (float y = 0; y < (xz ? 1 : supercubeedge); ++y)
+            for (float x = 0; x < (zy ? 1 : supercubeedge); ++x) {
                 auto pos = QVector3D(x, y, z);
                 auto it = layer.textures.find(pos);
                 auto & ptr = it != std::end(layer.textures) ? *it->second : *layer.bogusCube;
@@ -297,9 +314,10 @@ void widget::paintGL() {
                     punned.lut.bind(1);
                     overlay_data_shader.setUniformValue("lutSize", static_cast<float>(punned.lut.width() * punned.lut.height() * punned.lut.depth()));
                 } else {
-                    ptr.cube.bind(0);;
+                    ptr.cube.bind(0);
                 }
-                glDrawArrays(GL_QUADS, 4 * (y * supercubeedge + x), 4);
+                const auto offset = xy ? (y * supercubeedge + x) : xz ? (z * supercubeedge + x) : (z * supercubeedge + y);//from outer to inner loop variable
+                glDrawArrays(GL_QUADS, 4 * offset, 4);
             }
         }
     }
