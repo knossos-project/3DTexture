@@ -216,29 +216,19 @@ void widget::paintGL() {
 
     bool xy = true, xz = false, zy = false;
 
-    const float width = 1.0f * this->width();
-    const float height = 1.0f * this->height();
-    std::vector<std::array<GLfloat, 3>> triangleVertices;
+    std::vector<std::array<GLfloat, 3>> triangleVertices;//flipped y
+    triangleVertices.push_back({{0.0f, 1.0f, 0.0f}});
+    triangleVertices.push_back({{0.0f, 0.0f, 0.0f}});
+    triangleVertices.push_back({{1.0f, 0.0f, 0.0f}});
+    triangleVertices.push_back({{1.0f, 1.0f, 0.0f}});
     std::vector<std::array<GLfloat, 3>> textureVertices;
     for (float z = 0.0f; z < (xy ? 1 : supercubeedge); ++z)
     for (float y = 0.0f; y < (xz ? 1 : supercubeedge); ++y)
     for (float x = 0.0f; x < (zy ? 1 : supercubeedge); ++x) {
-        auto zz = z + deviation.z();
-        auto startx = zy ? zz * (width / supercubeedge) : x * (width / supercubeedge);
-        auto starty = xz ? zz * (height / supercubeedge) : y * (height / supercubeedge);
-        auto endx = startx + width / supercubeedge;
-        auto endy = starty + height / supercubeedge;
-
-        std::swap(starty, endy);//origin top left
-
-        triangleVertices.push_back({{startx, starty, 0.0f}});
-        triangleVertices.push_back({{startx, endy, 0.0f}});
-        triangleVertices.push_back({{endx, endy, 0.0f}});
-        triangleVertices.push_back({{endx, starty, 0.0f}});
-
         const float cubeedgef = gpucubeedge;
-        auto starttexR = (0.5f + frame + deviation.z()) / cubeedgef;
-        auto endtexR = (0.5f + frame + deviation.z()) / cubeedgef;
+        const auto depthOffset = frame;
+        const auto starttexR = (0.5f + depthOffset) / cubeedgef;
+        const auto endtexR = (0.5f + depthOffset) / cubeedgef;
 
         if (xy) {
             textureVertices.push_back({{0.0f, 1.0f, starttexR}});
@@ -261,7 +251,15 @@ void widget::paintGL() {
     QMatrix4x4 modelMatrix; //identity
     QMatrix4x4 viewMatrix; //identity
     QMatrix4x4 projectionMatrix;
+    const float width = 1.0f * this->width();
+    const float height = 1.0f * this->height();
     projectionMatrix.ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);//origin top left
+    viewMatrix.scale(width / gpucubeedge / supercubeedge, height / gpucubeedge / supercubeedge);
+    if (xz) {
+        viewMatrix.rotate(-90.0f, QVector3D(1.0f, 0.0f, 0.0f));
+    } else if (zy) {
+        viewMatrix.rotate(-90.0f, QVector3D(0.0f, -1.0f, 0.0f));
+    }
     viewMatrix.translate(deviation / QVector3D{-1.0f, 1.0f, 1.0f});
 
     // raw data shader
@@ -308,16 +306,25 @@ void widget::paintGL() {
                 auto pos = QVector3D(x, y, z);
                 auto it = layer.textures.find(pos);
                 auto & ptr = it != std::end(layer.textures) ? *it->second : *layer.bogusCube;
+                modelMatrix.setToIdentity();
+                modelMatrix.translate(x * gpucubeedge, y * gpucubeedge, z * gpucubeedge);
+                if (xz) {
+                    modelMatrix.rotate(90.0f, QVector3D(1.0f, 0.0f, 0.0f));
+                } else if (zy) {
+                    modelMatrix.rotate(90.0f, QVector3D(0.0f, -1.0f, 0.0f));
+                }
+                modelMatrix.scale(gpucubeedge);
                 if (layer.isOverlayData) {
                     auto & punned = static_cast<gpu_lut_cube&>(ptr);
                     punned.cube.bind(0);
                     punned.lut.bind(1);
                     overlay_data_shader.setUniformValue("lutSize", static_cast<float>(punned.lut.width() * punned.lut.height() * punned.lut.depth()));
+                    overlay_data_shader.setUniformValue("model_matrix", modelMatrix);
                 } else {
                     ptr.cube.bind(0);
+                    raw_data_shader.setUniformValue("model_matrix", modelMatrix);
                 }
-                const auto offset = xy ? (y * supercubeedge + x) : xz ? (z * supercubeedge + x) : (z * supercubeedge + y);//from outer to inner loop variable
-                glDrawArrays(GL_QUADS, 4 * offset, 4);
+                glDrawArrays(GL_QUADS, 0, 4);
             }
         }
     }
